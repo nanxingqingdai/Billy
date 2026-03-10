@@ -10,21 +10,11 @@ import {
   recordLoss,
   PositionSnapshot,
 } from './strategies/riskManager';
+import { loadPositions, savePositions, Position } from './utils/positionStore';
 
 // ─── Position tracking ─────────────────────────────────────────────────────
 
-interface Position {
-  mint: string;
-  symbol: string;
-  entryPrice: number;
-  usdtSpent: number;
-  tokenBalance: number;
-  decimals: number;
-  batchesSold: Set<number>;
-  boughtAt: number;
-}
-
-const positions = new Map<string, Position>();
+const positions = loadPositions();
 const startedAt = Date.now();
 
 // ─── Single token scan ─────────────────────────────────────────────────────
@@ -105,6 +95,7 @@ async function scanToken(token: WatchlistToken): Promise<void> {
 
     const tokenBal = await getTokenBalance(mint);
     positions.set(mint, { mint, symbol, entryPrice: currentPrice, usdtSpent: buyAmount, tokenBalance: tokenBal, decimals: 0, batchesSold: new Set(), boughtAt: Math.floor(Date.now() / 1000) });
+    savePositions(positions);
     emit('bot:position', { action: 'open', symbol, mint, entryPrice: currentPrice, currentPrice, usdtSpent: buyAmount, pnlPct: 0 });
     log('INFO', `[${symbol}] Position opened — ${buyAmount} USDT @ $${currentPrice.toFixed(6)} | tx: ${result.txid}`);
 
@@ -125,6 +116,7 @@ async function forceClose(position: Position, currentPrice: number, slippageBps:
   if (config.dryRun) {
     log('WARN', `[${symbol}] DRY RUN force-close (${reason}) — P&L: ${pnlPct.toFixed(2)}%`);
     positions.delete(mint);
+    savePositions(positions);
     emit('bot:position', { action: 'close', symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct });
     emit('bot:trade', { type: 'sell', symbol, mint, usdtAmount: 0, price: currentPrice, txid: 'dry-run', dryRun: true });
     return;
@@ -135,6 +127,7 @@ async function forceClose(position: Position, currentPrice: number, slippageBps:
     const result = await sellToUsdt(mint, sellRaw, slippageBps, false);
     recordLoss(lossUsdt);
     positions.delete(mint);
+    savePositions(positions);
     emit('bot:position', { action: 'close', symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct });
     emit('bot:trade', { type: 'sell', symbol, mint, usdtAmount: usdtSpent + (usdtSpent * pnlPct / 100), price: currentPrice, txid: result.txid, dryRun: false });
     log('INFO', `[${symbol}] Force-closed (${reason}) | P&L: ${pnlPct.toFixed(2)}% | tx: ${result.txid}`);
@@ -176,6 +169,7 @@ async function evaluateSell(position: Position, currentPrice: number, batches: S
       const { sellToUsdt } = await import('./services/jupiter');
       const result = await sellToUsdt(mint, sellRaw, slippageBps, false);
       batchesSold.add(batch.priceMultiplier);
+      savePositions(positions);
       const realized = usdtSpent * batch.portion * batch.priceMultiplier;
       const cost     = usdtSpent * batch.portion;
       if (realized < cost) recordLoss(cost - realized);
@@ -191,6 +185,7 @@ async function evaluateSell(position: Position, currentPrice: number, batches: S
   if (allSold) {
     const pnlPct = ((currentPrice - entryPrice) / entryPrice) * 100;
     positions.delete(mint);
+    savePositions(positions);
     emit('bot:position', { action: 'close', symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct });
     log('INFO', `[${symbol}] Position fully closed`);
   }

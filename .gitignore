@@ -14,8 +14,9 @@ node_modules/
 logs/*.log
 *.log
 
-# Runtime risk config overrides
+# Runtime state files (user-specific, regenerated at runtime)
 risk-config.json
+positions.json
 
 # OS
 .DS_Store
