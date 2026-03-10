@@ -53,7 +53,7 @@
     .card-body { padding: 12px 16px; overflow-y: auto; flex: 1; }
 
     /* ── Stat row ── */
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; grid-column: 1 / -1; }
+    .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; grid-column: 1 / -1; }
     .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
     .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
     .stat-value { font-size: 20px; font-weight: 700; }
@@ -76,6 +76,14 @@
     .up   { color: var(--green); }
     .down { color: var(--red); }
     .neutral { color: var(--muted); }
+
+    /* SOL balance card states */
+    #stat-sol-card.sol-warn { border-color: var(--yellow); }
+    #stat-sol-card.sol-crit { border-color: var(--red);    }
+    #stat-sol-card.sol-warn .stat-label { color: var(--yellow); }
+    #stat-sol-card.sol-crit .stat-label { color: var(--red);    }
+    #stat-sol-card.sol-warn #stat-sol  { color: var(--yellow); }
+    #stat-sol-card.sol-crit #stat-sol  { color: var(--red);    }
 
     /* ── Log ── */
     #log-container { font-size: 11px; line-height: 1.7; }
@@ -210,6 +218,14 @@
     <div class="stat">
       <div class="stat-label">Last Cycle</div>
       <div class="stat-value" id="stat-cycle" style="font-size:13px;padding-top:4px">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">USDT Balance</div>
+      <div class="stat-value" id="stat-usdt" style="font-size:16px;padding-top:2px">—</div>
+    </div>
+    <div class="stat" id="stat-sol-card">
+      <div class="stat-label">SOL Balance</div>
+      <div class="stat-value" id="stat-sol" style="font-size:16px;padding-top:2px">—</div>
     </div>
   </div>
 
@@ -374,6 +390,21 @@ socket.on('bot:position', ({ action, symbol, mint, entryPrice, currentPrice, usd
 });
 
 socket.on('bot:log', ({ level, message }) => appendLog(level, message));
+
+socket.on('bot:balance', ({ solBalance, usdtBalance }) => {
+  document.getElementById('stat-usdt').textContent = '$' + usdtBalance.toFixed(2);
+  document.getElementById('stat-sol').textContent  = solBalance.toFixed(4) + ' SOL';
+
+  const card = document.getElementById('stat-sol-card');
+  card.classList.remove('sol-warn', 'sol-crit');
+  if (solBalance < 0.05) {
+    card.classList.add('sol-crit');
+    appendLog('ERROR', `⛽ SOL critically low: ${solBalance.toFixed(4)} SOL — trading blocked`);
+  } else if (solBalance < 0.1) {
+    card.classList.add('sol-warn');
+    appendLog('WARN', `⛽ SOL low: ${solBalance.toFixed(4)} SOL — please top up`);
+  }
+});
 
 socket.on('bot:risk', ({ rule, symbol, detail, blocked }) => {
   if (blocked) {

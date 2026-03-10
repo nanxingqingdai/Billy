@@ -136,7 +136,32 @@ export function checkPriceImpact(quote: QuoteResponse): RiskCheckResult {
 }
 
 /**
- * Check 6 — USDT balance reserve
+ * Check 6 — SOL gas balance
+ * Warn if SOL < 0.1; block if SOL < 0.05 (not enough gas for transactions).
+ */
+export const SOL_GAS_WARN  = 0.1;
+export const SOL_GAS_BLOCK = 0.05;
+
+export function checkSolBalance(solBalance: number): RiskCheckResult {
+  if (solBalance < SOL_GAS_BLOCK) {
+    return {
+      ok: false,
+      rule: 'LOW_SOL',
+      detail: `SOL balance ${solBalance.toFixed(4)} SOL is critically low — minimum ${SOL_GAS_BLOCK} SOL required for gas`,
+    };
+  }
+  if (solBalance < SOL_GAS_WARN) {
+    // Warn but don't block
+    const detail = `SOL balance ${solBalance.toFixed(4)} SOL is low (top up recommended — warn threshold: ${SOL_GAS_WARN} SOL)`;
+    log('WARN', `[Risk][SOL_LOW_WARN] ${detail}`);
+    emit('bot:risk', { rule: 'SOL_LOW_WARN', detail, blocked: false });
+    return { ok: true, rule: 'SOL_LOW_WARN', detail };
+  }
+  return { ok: true, rule: 'SOL_OK', detail: `SOL balance ${solBalance.toFixed(4)} SOL — OK` };
+}
+
+/**
+ * Check 7 — USDT balance reserve
  * Fail if buying buyAmount would leave wallet below MIN_USDT_RESERVE.
  */
 export function checkBalance(usdtBalance: number, buyAmount: number): RiskCheckResult {
@@ -159,12 +184,14 @@ export function runBuyChecks(
   symbol: string,
   openPositions: number,
   usdtBalance: number,
+  solBalance: number,
   buyAmount: number,
   quote: QuoteResponse
 ): RiskCheckResult {
   const checks = [
     checkDailyLoss(),
     checkMaxPositions(openPositions),
+    checkSolBalance(solBalance),
     checkBalance(usdtBalance, buyAmount),
     checkPriceImpact(quote),
   ];

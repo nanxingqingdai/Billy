@@ -1,7 +1,7 @@
 import { config } from './config/env';
 import { loadWatchlist, WatchlistToken, SellBatch } from './config/watchlist';
 import { getRecentOHLCV, getTokenPrice, isLowVolContraction } from './services/birdeye';
-import { buyWithUsdt, getTokenBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
+import { buyWithUsdt, getTokenBalance, getSolBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
 import { log } from './utils/logger';
 import { emit } from './utils/emitter';
 import {
@@ -19,7 +19,7 @@ const startedAt = Date.now();
 
 // ─── Single token scan ─────────────────────────────────────────────────────
 
-async function scanToken(token: WatchlistToken): Promise<void> {
+async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance: number): Promise<void> {
   const { symbol, mint, signal, maxBuyUsdt, slippageBps, sellBatches } = token;
 
   try {
@@ -75,8 +75,7 @@ async function scanToken(token: WatchlistToken): Promise<void> {
     const rawAmount = Math.floor(buyAmount * Math.pow(10, USDT_DECIMALS));
     const quote = await getQuote({ inputMint: USDT_MINT, outputMint: mint, amount: rawAmount, slippageBps });
 
-    const usdtBalance = await getTokenBalance(USDT_MINT);
-    const riskResult = runBuyChecks(symbol, positions.size, usdtBalance, buyAmount, quote);
+    const riskResult = runBuyChecks(symbol, positions.size, usdtBalance, solBalance, buyAmount, quote);
 
     if (!riskResult.ok) {
       log('WARN', `[${symbol}] Buy blocked by risk (${riskResult.rule}): ${riskResult.detail}`);
@@ -197,8 +196,22 @@ async function runCycle(tokens: WatchlistToken[]): Promise<void> {
   log('INFO', `━━━ Cycle start | ${tokens.length} tokens | DRY_RUN=${config.dryRun} ━━━`);
   emit('bot:cycle', { phase: 'start', tokenCount: tokens.length, positionCount: positions.size });
 
+  // Fetch wallet balances once per cycle (avoids repeated RPC calls per token)
+  let solBalance  = 0;
+  let usdtBalance = 0;
+  try {
+    [solBalance, usdtBalance] = await Promise.all([
+      getSolBalance(),
+      getTokenBalance(USDT_MINT),
+    ]);
+    emit('bot:balance', { solBalance, usdtBalance });
+    log('INFO', `[Wallet] SOL: ${solBalance.toFixed(4)} | USDT: $${usdtBalance.toFixed(2)}`);
+  } catch (err) {
+    log('WARN', `[Wallet] Balance fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   for (const token of tokens) {
-    await scanToken(token);
+    await scanToken(token, solBalance, usdtBalance);
     await sleep(1200);
   }
 

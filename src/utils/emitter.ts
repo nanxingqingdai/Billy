@@ -13,6 +13,7 @@ export interface BotEvents {
   'bot:error':    { level: 'error' | 'fatal'; message: string; timestamp: string };
   'bot:log':      { level: 'INFO' | 'WARN' | 'ERROR'; message: string; timestamp: string };
   'bot:config':   { config: Record<string, number>; errors?: string[] };
+  'bot:balance':  { solBalance: number; usdtBalance: number };
 }
 
 // ─── Singleton ──────────────────────────────────────────────────────────────
