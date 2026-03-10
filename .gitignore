@@ -1,0 +1,19 @@
+# Environment variables - never commit secrets
+.env
+
+# Compiled output
+dist/
+
+# Dependencies
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
