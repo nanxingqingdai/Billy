@@ -1,8 +1,9 @@
 import { setupGlobalErrorHandlers } from './utils/errorHandler';
-setupGlobalErrorHandlers(); // must be first — catches any startup errors
+setupGlobalErrorHandlers(); // must be first
 
 import { log } from './utils/logger';
 import { config } from './config/env';
+import { createAppServer } from './server';
 import { startMonitor } from './monitor';
 
 async function main(): Promise<void> {
@@ -26,6 +27,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Start HTTP + Socket.io dashboard server
+  const { httpServer, port } = createAppServer();
+  httpServer.listen(port, () => {
+    log('INFO', `Dashboard running at http://localhost:${port}`);
+  });
+
+  // Start monitor loop
   await startMonitor();
 }
 

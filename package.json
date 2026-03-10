@@ -21,9 +21,12 @@
     "@solana/web3.js": "^1.98.4",
     "axios": "^1.13.6",
     "bs58": "^6.0.0",
-    "dotenv": "^17.3.1"
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^25.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

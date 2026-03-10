@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Billy · Solana Meme Bot</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --yellow:   #d29922;
+      --blue:     #58a6ff;
+      --purple:   #bc8cff;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px; border-bottom: 1px solid var(--border);
+      background: var(--surface); position: sticky; top: 0; z-index: 10;
+    }
+    .logo { font-size: 16px; font-weight: 700; letter-spacing: 1px; color: var(--blue); }
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .badge.running  { background: #1a3a1a; color: var(--green); }
+    .badge.dryrun   { background: #3a3010; color: var(--yellow); }
+    .badge.offline  { background: #3a1a1a; color: var(--red); }
+    .badge.running .badge-dot  { background: var(--green); animation: pulse 1.5s infinite; }
+    .badge.dryrun  .badge-dot  { background: var(--yellow); }
+    .badge.offline .badge-dot  { background: var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .uptime { color: var(--muted); font-size: 11px; }
+
+    /* ── Layout ── */
+    .layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; gap: 16px; padding: 16px; height: calc(100vh - 53px); }
+
+    /* ── Cards ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+    .card-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+    .card-body { padding: 12px 16px; overflow-y: auto; flex: 1; }
+
+    /* ── Stat row ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; grid-column: 1 / -1; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+    .stat-value { font-size: 20px; font-weight: 700; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 8px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2128; }
+    .no-data { color: var(--muted); text-align: center; padding: 24px; font-size: 12px; }
+
+    /* ── Tags ── */
+    .tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .tag-buy    { background: #1a3a1a; color: var(--green); }
+    .tag-sell   { background: #3a1a1a; color: var(--red); }
+    .tag-signal { background: #2a2a10; color: var(--yellow); }
+    .tag-dry    { background: #1a1a3a; color: var(--purple); }
+
+    .up   { color: var(--green); }
+    .down { color: var(--red); }
+    .neutral { color: var(--muted); }
+
+    /* ── Log ── */
+    #log-container { font-size: 11px; line-height: 1.7; }
+    .log-line { display: flex; gap: 10px; padding: 1px 0; }
+    .log-time { color: var(--muted); flex-shrink: 0; }
+    .log-INFO  { color: var(--text); }
+    .log-WARN  { color: var(--yellow); }
+    .log-ERROR { color: var(--red); }
+
+    /* ── Error banner ── */
+    #error-banner { display: none; position: fixed; bottom: 16px; right: 16px; max-width: 400px; background: #3a1a1a; border: 1px solid var(--red); border-radius: 8px; padding: 12px 16px; z-index: 100; }
+    #error-banner .err-title { color: var(--red); font-weight: 700; margin-bottom: 4px; }
+    #error-banner .err-msg { color: var(--text); font-size: 12px; }
+    #error-banner .err-close { position: absolute; top: 8px; right: 12px; cursor: pointer; color: var(--muted); font-size: 16px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡ BILLY BOT</div>
+  <div class="header-right">
+    <span id="status-badge" class="badge offline"><span class="badge-dot"></span>Offline</span>
+    <span id="uptime" class="uptime">--</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- Stat cards -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Open Positions</div>
+      <div class="stat-value" id="stat-positions">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Signals Today</div>
+      <div class="stat-value" id="stat-signals">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Trades Today</div>
+      <div class="stat-value" id="stat-trades">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Last Cycle</div>
+      <div class="stat-value" id="stat-cycle" style="font-size:13px;padding-top:4px">—</div>
+    </div>
+  </div>
+
+  <!-- Positions -->
+  <div class="card">
+    <div class="card-header">
+      <span>Active Positions</span>
+      <span id="pos-count" class="neutral">0</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Entry</th>
+            <th>Current</th>
+            <th>P&L</th>
+            <th>Spent</th>
+          </tr>
+        </thead>
+        <tbody id="positions-table">
+          <tr><td colspan="5" class="no-data">No open positions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Prices -->
+  <div class="card">
+    <div class="card-header">
+      <span>Watchlist Prices</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Price</th>
+            <th>24h</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody id="prices-table">
+          <tr><td colspan="4" class="no-data">Waiting for first cycle...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Trade history -->
+  <div class="card">
+    <div class="card-header">
+      <span>Trade / Signal Log</span>
+      <span id="trade-count" class="neutral">0</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Token</th>
+            <th>Price</th>
+            <th>Amount</th>
+            <th>Tx</th>
+          </tr>
+        </thead>
+        <tbody id="trades-table">
+          <tr><td colspan="6" class="no-data">No trades yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Live log -->
+  <div class="card">
+    <div class="card-header">
+      <span>Live Log</span>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted)">
+        <input type="checkbox" id="autoscroll" checked style="cursor:pointer"> Auto-scroll
+      </label>
+    </div>
+    <div class="card-body" id="log-scroll">
+      <div id="log-container"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Error banner -->
+<div id="error-banner">
+  <span class="err-close" onclick="document.getElementById('error-banner').style.display='none'">✕</span>
+  <div class="err-title">⚠ Bot Error</div>
+  <div class="err-msg" id="error-msg"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  positions: {},   // mint → { symbol, entryPrice, currentPrice, usdtSpent, pnlPct }
+  prices:    {},   // mint → { symbol, price, change24h, updatedAt }
+  trades:    [],   // [ { time, type, symbol, price, usdtAmount, txid, dryRun, batch } ]
+  signals:   0,
+  tradesCount: 0,
+  lastCycle: null,
+};
+
+// ── Socket events ──────────────────────────────────────────────────────────
+
+socket.on('connect', () => appendLog('INFO', 'Dashboard connected'));
+socket.on('disconnect', () => {
+  setStatusBadge('offline');
+  appendLog('WARN', 'Dashboard disconnected');
+});
+
+socket.on('bot:status', ({ running, dryRun, uptimeSec }) => {
+  setStatusBadge(running ? (dryRun ? 'dryrun' : 'running') : 'offline');
+  document.getElementById('uptime').textContent = 'Uptime ' + fmtUptime(uptimeSec);
+});
+
+socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
+  if (phase === 'complete') {
+    state.lastCycle = new Date();
+    document.getElementById('stat-cycle').textContent = fmtTime(state.lastCycle);
+    document.getElementById('stat-positions').textContent = positionCount;
+    document.getElementById('pos-count').textContent = positionCount;
+  }
+  appendLog('INFO', `Cycle ${phase} — ${tokenCount} tokens`);
+});
+
+socket.on('bot:price', ({ symbol, mint, price, change24h }) => {
+  state.prices[mint] = { symbol, price, change24h, updatedAt: new Date() };
+  renderPrices();
+});
+
+socket.on('bot:signal', ({ symbol, mint, price }) => {
+  state.signals++;
+  document.getElementById('stat-signals').textContent = state.signals;
+  appendLog('WARN', `⚡ BUY SIGNAL: ${symbol} @ $${fmt(price)}`);
+  addTradeRow({ time: new Date(), type: 'signal', symbol, price, usdtAmount: 0, txid: '', dryRun: false });
+});
+
+socket.on('bot:trade', (t) => {
+  state.tradesCount++;
+  document.getElementById('stat-trades').textContent = state.tradesCount;
+  addTradeRow({ ...t, time: new Date() });
+  appendLog('INFO', `${t.type.toUpperCase()} ${t.symbol} @ $${fmt(t.price)}${t.dryRun ? ' [DRY]' : ''}`);
+});
+
+socket.on('bot:position', ({ action, symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct }) => {
+  if (action === 'close') {
+    delete state.positions[mint];
+  } else {
+    state.positions[mint] = { symbol, entryPrice, currentPrice, usdtSpent, pnlPct };
+  }
+  renderPositions();
+  document.getElementById('stat-positions').textContent = Object.keys(state.positions).length;
+  document.getElementById('pos-count').textContent = Object.keys(state.positions).length;
+});
+
+socket.on('bot:log', ({ level, message }) => appendLog(level, message));
+
+socket.on('bot:error', ({ level, message }) => {
+  appendLog('ERROR', `[${level.toUpperCase()}] ${message}`);
+  document.getElementById('error-msg').textContent = message;
+  document.getElementById('error-banner').style.display = 'block';
+});
+
+// ── Render helpers ─────────────────────────────────────────────────────────
+
+function renderPositions() {
+  const tbody = document.getElementById('positions-table');
+  const entries = Object.entries(state.positions);
+  if (entries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No open positions</td></tr>';
+    return;
+  }
+  tbody.innerHTML = entries.map(([, p]) => {
+    const pnlClass = p.pnlPct >= 0 ? 'up' : 'down';
+    const pnlSign  = p.pnlPct >= 0 ? '+' : '';
+    return `<tr>
+      <td><b>${p.symbol}</b></td>
+      <td>$${fmt(p.entryPrice)}</td>
+      <td>$${fmt(p.currentPrice)}</td>
+      <td class="${pnlClass}">${pnlSign}${p.pnlPct.toFixed(2)}%</td>
+      <td>$${p.usdtSpent.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPrices() {
+  const tbody = document.getElementById('prices-table');
+  const entries = Object.values(state.prices);
+  if (entries.length === 0) return;
+  tbody.innerHTML = entries.map(p => {
+    const chgClass = p.change24h >= 0 ? 'up' : 'down';
+    const chgSign  = p.change24h >= 0 ? '+' : '';
+    return `<tr>
+      <td><b>${p.symbol}</b></td>
+      <td>$${fmt(p.price)}</td>
+      <td class="${chgClass}">${chgSign}${p.change24h.toFixed(2)}%</td>
+      <td class="neutral">${fmtTime(p.updatedAt)}</td>
+    </tr>`;
+  }).join('');
+}
+
+const MAX_TRADES = 100;
+function addTradeRow(t) {
+  state.trades.unshift(t);
+  if (state.trades.length > MAX_TRADES) state.trades.pop();
+  const tbody = document.getElementById('trades-table');
+  const tag = t.type === 'buy'    ? `<span class="tag tag-buy">BUY</span>` :
+              t.type === 'sell'   ? `<span class="tag tag-sell">SELL</span>` :
+                                    `<span class="tag tag-signal">SIGNAL</span>`;
+  const dryTag = t.dryRun ? ` <span class="tag tag-dry">DRY</span>` : '';
+  const txLink = t.txid && t.txid !== 'dry-run' && t.txid !== ''
+    ? `<a href="https://solscan.io/tx/${t.txid}" target="_blank" style="color:var(--blue)">${t.txid.slice(0,8)}…</a>`
+    : `<span class="neutral">—</span>`;
+  const amtStr = t.usdtAmount > 0 ? `$${t.usdtAmount.toFixed(2)}` : '—';
+
+  const first = tbody.querySelector('td[colspan]');
+  if (first) tbody.innerHTML = '';
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="neutral">${fmtTime(t.time)}</td>
+    <td>${tag}${dryTag}</td>
+    <td><b>${t.symbol}</b></td>
+    <td>$${fmt(t.price)}</td>
+    <td>${amtStr}</td>
+    <td>${txLink}</td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+  document.getElementById('trade-count').textContent = state.trades.length;
+}
+
+// ── Log ────────────────────────────────────────────────────────────────────
+
+const MAX_LOG = 300;
+let logLineCount = 0;
+
+function appendLog(level, message) {
+  const container = document.getElementById('log-container');
+  logLineCount++;
+  if (logLineCount > MAX_LOG) {
+    container.firstChild && container.removeChild(container.firstChild);
+  }
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-time">${fmtTime(new Date())}</span><span class="log-${level}">${escHtml(message)}</span>`;
+  container.appendChild(div);
+  if (document.getElementById('autoscroll').checked) {
+    const scroll = document.getElementById('log-scroll');
+    scroll.scrollTop = scroll.scrollHeight;
+  }
+}
+
+// ── Status badge ───────────────────────────────────────────────────────────
+
+function setStatusBadge(mode) {
+  const el = document.getElementById('status-badge');
+  el.className = `badge ${mode}`;
+  el.innerHTML = `<span class="badge-dot"></span>${
+    mode === 'running' ? 'Live' : mode === 'dryrun' ? 'Dry Run' : 'Offline'
+  }`;
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+
+function fmt(n) {
+  if (n === undefined || n === null) return '—';
+  if (n < 0.0001) return n.toExponential(3);
+  if (n < 1)      return n.toFixed(6);
+  if (n < 1000)   return n.toFixed(4);
+  return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function fmtTime(d) {
+  if (!d) return '—';
+  return d.toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+function fmtUptime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

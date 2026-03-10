@@ -6,6 +6,9 @@ export const config = {
   walletPrivateKey: process.env['WALLET_PRIVATE_KEY'] ?? '',
   birdeyeApiKey:    process.env['BIRDEYE_API_KEY'] ?? '',
 
+  // Dashboard
+  dashboardPort: Number(process.env['DASHBOARD_PORT'] ?? 3000),
+
   // Monitor loop
   monitorIntervalSec: Number(process.env['MONITOR_INTERVAL_SEC'] ?? 300),
 
