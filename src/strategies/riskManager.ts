@@ -1,4 +1,4 @@
-import { config } from '../config/env';
+import { getRiskConfig } from '../config/riskConfig';
 import { emit } from '../utils/emitter';
 import { log } from '../utils/logger';
 import type { QuoteResponse } from '../services/jupiter';
@@ -39,7 +39,7 @@ export function recordLoss(lossUsdt: number): void {
     _dailyLoss = { dateUtc: todayUtc(), lossUsdt: 0 };
   }
   _dailyLoss.lossUsdt += lossUsdt;
-  log('INFO', `[Risk] Daily loss updated: $${_dailyLoss.lossUsdt.toFixed(2)} / $${config.maxDailyLossUsdt}`);
+  log('INFO', `[Risk] Daily loss updated: $${_dailyLoss.lossUsdt.toFixed(2)} / $${getRiskConfig().maxDailyLossUsdt}`);
 }
 
 export function getDailyLoss(): number {
@@ -56,12 +56,13 @@ export function getDailyLoss(): number {
  * Fail if current price is more than STOP_LOSS_PCT% below entry.
  */
 export function checkStopLoss(pos: PositionSnapshot): RiskCheckResult {
+  const { stopLossPct } = getRiskConfig();
   const dropPct = ((pos.entryPrice - pos.currentPrice) / pos.entryPrice) * 100;
-  if (dropPct >= config.stopLossPct) {
+  if (dropPct >= stopLossPct) {
     return {
       ok: false,
       rule: 'STOP_LOSS',
-      detail: `${pos.symbol} dropped ${dropPct.toFixed(2)}% from entry (limit: ${config.stopLossPct}%)`,
+      detail: `${pos.symbol} dropped ${dropPct.toFixed(2)}% from entry (limit: ${stopLossPct}%)`,
     };
   }
   return { ok: true, rule: 'STOP_LOSS', detail: `drop ${dropPct.toFixed(2)}% — OK` };
@@ -72,14 +73,15 @@ export function checkStopLoss(pos: PositionSnapshot): RiskCheckResult {
  * Fail if already holding MAX_OPEN_POSITIONS tokens.
  */
 export function checkMaxPositions(currentCount: number): RiskCheckResult {
-  if (currentCount >= config.maxOpenPositions) {
+  const { maxOpenPositions } = getRiskConfig();
+  if (currentCount >= maxOpenPositions) {
     return {
       ok: false,
       rule: 'MAX_POSITIONS',
-      detail: `${currentCount} / ${config.maxOpenPositions} positions open — limit reached`,
+      detail: `${currentCount} / ${maxOpenPositions} positions open — limit reached`,
     };
   }
-  return { ok: true, rule: 'MAX_POSITIONS', detail: `${currentCount} / ${config.maxOpenPositions} — OK` };
+  return { ok: true, rule: 'MAX_POSITIONS', detail: `${currentCount} / ${maxOpenPositions} — OK` };
 }
 
 /**
@@ -87,15 +89,16 @@ export function checkMaxPositions(currentCount: number): RiskCheckResult {
  * Fail if today's total realised loss exceeds MAX_DAILY_LOSS_USDT.
  */
 export function checkDailyLoss(): RiskCheckResult {
+  const { maxDailyLossUsdt } = getRiskConfig();
   const loss = getDailyLoss();
-  if (loss >= config.maxDailyLossUsdt) {
+  if (loss >= maxDailyLossUsdt) {
     return {
       ok: false,
       rule: 'DAILY_LOSS',
-      detail: `Daily loss $${loss.toFixed(2)} reached limit $${config.maxDailyLossUsdt} — buying paused`,
+      detail: `Daily loss $${loss.toFixed(2)} reached limit $${maxDailyLossUsdt} — buying paused`,
     };
   }
-  return { ok: true, rule: 'DAILY_LOSS', detail: `$${loss.toFixed(2)} / $${config.maxDailyLossUsdt} — OK` };
+  return { ok: true, rule: 'DAILY_LOSS', detail: `$${loss.toFixed(2)} / $${maxDailyLossUsdt} — OK` };
 }
 
 /**
@@ -103,15 +106,16 @@ export function checkDailyLoss(): RiskCheckResult {
  * Fail if a position has been open longer than MAX_HOLD_HOURS.
  */
 export function checkHoldDuration(pos: PositionSnapshot): RiskCheckResult {
+  const { maxHoldHours } = getRiskConfig();
   const heldHours = (Date.now() / 1000 - pos.boughtAt) / 3600;
-  if (heldHours >= config.maxHoldHours) {
+  if (heldHours >= maxHoldHours) {
     return {
       ok: false,
       rule: 'MAX_HOLD',
-      detail: `${pos.symbol} held ${heldHours.toFixed(1)}h — exceeds ${config.maxHoldHours}h limit`,
+      detail: `${pos.symbol} held ${heldHours.toFixed(1)}h — exceeds ${maxHoldHours}h limit`,
     };
   }
-  return { ok: true, rule: 'MAX_HOLD', detail: `held ${heldHours.toFixed(1)}h / ${config.maxHoldHours}h — OK` };
+  return { ok: true, rule: 'MAX_HOLD', detail: `held ${heldHours.toFixed(1)}h / ${maxHoldHours}h — OK` };
 }
 
 /**
@@ -119,12 +123,13 @@ export function checkHoldDuration(pos: PositionSnapshot): RiskCheckResult {
  * Fail if Jupiter quote's price impact exceeds MAX_PRICE_IMPACT_PCT.
  */
 export function checkPriceImpact(quote: QuoteResponse): RiskCheckResult {
+  const { maxPriceImpactPct } = getRiskConfig();
   const impact = Math.abs(Number(quote.priceImpactPct));
-  if (impact > config.maxPriceImpactPct) {
+  if (impact > maxPriceImpactPct) {
     return {
       ok: false,
       rule: 'PRICE_IMPACT',
-      detail: `Price impact ${impact.toFixed(3)}% exceeds limit ${config.maxPriceImpactPct}%`,
+      detail: `Price impact ${impact.toFixed(3)}% exceeds limit ${maxPriceImpactPct}%`,
     };
   }
   return { ok: true, rule: 'PRICE_IMPACT', detail: `impact ${impact.toFixed(3)}% — OK` };
@@ -135,15 +140,16 @@ export function checkPriceImpact(quote: QuoteResponse): RiskCheckResult {
  * Fail if buying buyAmount would leave wallet below MIN_USDT_RESERVE.
  */
 export function checkBalance(usdtBalance: number, buyAmount: number): RiskCheckResult {
+  const { minUsdtReserve } = getRiskConfig();
   const remaining = usdtBalance - buyAmount;
-  if (remaining < config.minUsdtReserve) {
+  if (remaining < minUsdtReserve) {
     return {
       ok: false,
       rule: 'MIN_RESERVE',
-      detail: `Balance $${usdtBalance.toFixed(2)} - buy $${buyAmount.toFixed(2)} = $${remaining.toFixed(2)} < reserve $${config.minUsdtReserve}`,
+      detail: `Balance $${usdtBalance.toFixed(2)} - buy $${buyAmount.toFixed(2)} = $${remaining.toFixed(2)} < reserve $${minUsdtReserve}`,
     };
   }
-  return { ok: true, rule: 'MIN_RESERVE', detail: `remaining $${remaining.toFixed(2)} ≥ reserve $${config.minUsdtReserve} — OK` };
+  return { ok: true, rule: 'MIN_RESERVE', detail: `remaining $${remaining.toFixed(2)} ≥ reserve $${minUsdtReserve} — OK` };
 }
 
 // ─── Composite gate ────────────────────────────────────────────────────────

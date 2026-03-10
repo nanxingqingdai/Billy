@@ -6,6 +6,7 @@ import { registerIO } from './utils/emitter';
 import { registerBroadcaster } from './utils/errorHandler';
 import { log } from './utils/logger';
 import { config } from './config/env';
+import { getRiskConfig, updateRiskConfig, RISK_FIELDS } from './config/riskConfig';
 
 export function createAppServer(): { httpServer: ReturnType<typeof createServer>; port: number } {
   const app = express();
@@ -32,6 +33,29 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
 
   io.on('connection', (socket) => {
     log('INFO', `[Dashboard] Client connected: ${socket.id}`);
+
+    // Send current risk config + field metadata immediately on connect
+    socket.emit('bot:config', { config: getRiskConfig() });
+    socket.emit('bot:config:fields', RISK_FIELDS);
+
+    // Client requests current config
+    socket.on('config:get', () => {
+      socket.emit('bot:config', { config: getRiskConfig() });
+    });
+
+    // Client submits config updates
+    socket.on('config:update', (updates: Record<string, number>) => {
+      const { config: newCfg, errors } = updateRiskConfig(updates);
+      if (errors.length > 0) {
+        log('WARN', `[Dashboard] Config update rejected: ${errors.join(', ')}`);
+        socket.emit('bot:config', { config: newCfg, errors });
+      } else {
+        log('INFO', `[Dashboard] Risk config updated by dashboard`);
+        // Broadcast to all clients so all open tabs stay in sync
+        io.emit('bot:config', { config: newCfg });
+      }
+    });
+
     socket.on('disconnect', () => {
       log('INFO', `[Dashboard] Client disconnected: ${socket.id}`);
     });

@@ -12,6 +12,7 @@ export interface BotEvents {
   'bot:risk':     { rule: string; symbol?: string; detail: string; blocked: boolean };
   'bot:error':    { level: 'error' | 'fatal'; message: string; timestamp: string };
   'bot:log':      { level: 'INFO' | 'WARN' | 'ERROR'; message: string; timestamp: string };
+  'bot:config':   { config: Record<string, number>; errors?: string[] };
 }
 
 // ─── Singleton ──────────────────────────────────────────────────────────────
