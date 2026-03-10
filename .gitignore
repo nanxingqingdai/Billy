@@ -10,9 +10,9 @@ node_modules/
 # TypeScript cache
 *.tsbuildinfo
 
-# Logs
+# Logs — keep the directory, ignore log files
+logs/*.log
 *.log
-logs/
 
 # OS
 .DS_Store

@@ -1,3 +1,6 @@
+import { setupGlobalErrorHandlers } from './utils/errorHandler';
+setupGlobalErrorHandlers(); // must be first — catches any startup errors
+
 import { log } from './utils/logger';
 import { config } from './config/env';
 import { startMonitor } from './monitor';
