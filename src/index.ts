@@ -8,11 +8,17 @@ import {
   avgAmplitude,
   avgVolume,
 } from './services/birdeye';
+import {
+  getSolBalance,
+  getTokenBalance,
+  getQuote,
+  buyWithUsdt,
+  SOL_MINT,
+  USDT_MINT,
+  USDT_DECIMALS,
+} from './services/jupiter';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Wrapped SOL mint — used as a smoke test
-const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
 async function main(): Promise<void> {
   log('INFO', '========================================');
@@ -62,6 +68,31 @@ async function main(): Promise<void> {
     volumeContractionRatio: 0.7,
   });
   log('INFO', `Low-vol signal (1H): ${signal ? 'BUY SIGNAL' : 'no signal'}`);
+
+  // 6. Jupiter smoke test (dry-run only — no real transaction)
+  log('INFO', '--- Jupiter smoke test ---');
+  await sleep(3000); // allow network to settle after Birdeye session
+  const solBal  = await getSolBalance();
+  const usdtBal = await getTokenBalance(USDT_MINT);
+  log('INFO', `Wallet SOL   : ${solBal.toFixed(4)} SOL`);
+  log('INFO', `Wallet USDT  : ${usdtBal.toFixed(2)} USDT`);
+
+  // Get a quote: 10 USDT → SOL (just to verify the API works)
+  const quote = await getQuote({
+    inputMint:   USDT_MINT,
+    outputMint:  SOL_MINT,
+    amount:      10 * Math.pow(10, USDT_DECIMALS), // 10 USDT in raw units
+    slippageBps: 100,
+  });
+  const inUsdt = (Number(quote.inAmount)  / 1e6).toFixed(2);
+  const outSol = (Number(quote.outAmount) / 1e9).toFixed(4);
+  log('INFO', `Quote        : ${inUsdt} USDT → ${outSol} SOL`);
+  log('INFO', `Price impact : ${Number(quote.priceImpactPct).toFixed(4)}%`);
+  log('INFO', `Route hops   : ${quote.routePlan.length}`);
+
+  // Dry-run buy: 10 USDT → SOL (no actual transaction sent)
+  const result = await buyWithUsdt(SOL_MINT, 10, 100, /* dryRun */ true);
+  log('INFO', `Dry-run txid : ${result.txid}`);
 
   log('INFO', '--- Smoke test complete ---');
   log('INFO', 'All modules loaded. Ready to trade.');
