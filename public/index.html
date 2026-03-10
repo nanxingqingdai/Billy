@@ -104,6 +104,125 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+    /* ── Watchlist panel ── */
+    #wl-overlay {
+      display: none; position: fixed; inset: 0; z-index: 50;
+      background: rgba(0,0,0,.55);
+    }
+    #wl-overlay.open { display: block; }
+    #wl-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 500px;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 51;
+      transform: translateX(100%); transition: transform .2s ease;
+    }
+    #wl-overlay.open #wl-panel { transform: translateX(0); }
+
+    .wl-body { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .wl-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+    #wl-status { font-size: 11px; min-height: 16px; text-align: center; }
+    #wl-status.ok    { color: var(--green); }
+    #wl-status.error { color: var(--red); }
+
+    /* Token card */
+    .wl-card { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+    .wl-card.active { border-color: #2a4a2a; }
+    .wl-card-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; cursor: pointer;
+      background: var(--bg);
+    }
+    .wl-card.active .wl-card-head { background: #0e1a0e; }
+    .wl-card-head:hover { background: #1c2128; }
+    .wl-token-label { flex: 1; }
+    .wl-token-label b { font-size: 13px; }
+    .wl-token-label .wl-name { color: var(--muted); font-size: 11px; margin-left: 6px; }
+    .wl-mint { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+    .wl-remove-btn {
+      background: none; border: 1px solid transparent; color: var(--muted);
+      border-radius: 4px; padding: 2px 7px; cursor: pointer; font-size: 12px;
+    }
+    .wl-remove-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* Toggle switch */
+    .wl-toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .wl-toggle input { opacity: 0; width: 0; height: 0; }
+    .wl-slider {
+      position: absolute; inset: 0; border-radius: 20px;
+      background: var(--border); cursor: pointer; transition: background .2s;
+    }
+    .wl-slider::before {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--muted); top: 3px; left: 3px; transition: transform .2s, background .2s;
+    }
+    .wl-toggle input:checked + .wl-slider { background: #1a3a1a; }
+    .wl-toggle input:checked + .wl-slider::before { transform: translateX(16px); background: var(--green); }
+
+    /* Token edit body */
+    .wl-card-body { padding: 12px; background: #0a0e14; border-top: 1px solid var(--border); display: none; flex-direction: column; gap: 10px; }
+    .wl-card-body.open { display: flex; }
+    .wl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .wl-field { display: flex; flex-direction: column; gap: 4px; }
+    .wl-field label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .wl-field input, .wl-field select {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      border-radius: 5px; padding: 6px 9px; font-family: inherit; font-size: 12px;
+      outline: none; transition: border-color .15s; width: 100%;
+    }
+    .wl-field input:focus, .wl-field select:focus { border-color: var(--blue); }
+
+    /* Sell batches mini-table */
+    .wl-batches-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .wl-batches-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .wl-batches-table th { color: var(--muted); text-align: left; padding: 3px 4px; font-weight: 400; font-size: 10px; text-transform: uppercase; }
+    .wl-batches-table td { padding: 3px 2px; }
+    .wl-batches-table input {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      border-radius: 4px; padding: 4px 6px; font-family: inherit; font-size: 11px;
+      width: 100%; outline: none;
+    }
+    .wl-batches-table input:focus { border-color: var(--blue); }
+    .batch-del-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: 2px 5px; font-size: 13px; border-radius: 3px;
+    }
+    .batch-del-btn:hover { color: var(--red); }
+    .batch-add-btn {
+      background: none; border: 1px dashed var(--border); color: var(--muted);
+      border-radius: 4px; padding: 4px; font-size: 11px; cursor: pointer;
+      width: 100%; margin-top: 4px; transition: color .15s, border-color .15s;
+    }
+    .batch-add-btn:hover { color: var(--blue); border-color: var(--blue); }
+    .wl-save-btn {
+      background: var(--blue); color: #000; border: none; border-radius: 5px;
+      padding: 7px; font-family: inherit; font-size: 11px; font-weight: 700;
+      cursor: pointer; width: 100%; transition: opacity .15s;
+    }
+    .wl-save-btn:hover { opacity: .85; }
+
+    /* Add token form */
+    #wl-add-form { border: 1px dashed var(--border); border-radius: 7px; padding: 12px; display: none; flex-direction: column; gap: 10px; }
+    #wl-add-form.open { display: flex; }
+    #wl-add-btn {
+      background: none; border: 1px dashed var(--border); color: var(--muted);
+      border-radius: 6px; padding: 8px; font-family: inherit; font-size: 12px;
+      cursor: pointer; width: 100%; transition: color .15s, border-color .15s;
+    }
+    #wl-add-btn:hover { color: var(--blue); border-color: var(--blue); }
+    #wl-add-submit {
+      background: var(--green); color: #000; border: none; border-radius: 5px;
+      padding: 7px; font-family: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer; flex: 1; transition: opacity .15s;
+    }
+    #wl-add-submit:hover { opacity: .85; }
+    #wl-add-cancel {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 5px; padding: 7px 14px; font-family: inherit; font-size: 12px;
+      cursor: pointer; transition: color .15s;
+    }
+    #wl-add-cancel:hover { color: var(--text); }
+
     /* ── Settings button ── */
     .settings-btn {
       background: none; border: 1px solid var(--border); color: var(--muted);
@@ -175,9 +294,57 @@
   <div class="header-right">
     <span id="status-badge" class="badge offline"><span class="badge-dot"></span>Offline</span>
     <span id="uptime" class="uptime">--</span>
+    <button class="settings-btn" onclick="openWatchlist()" title="Watchlist">📋 Watchlist</button>
     <button class="settings-btn" onclick="openSettings()" title="Risk Config">⚙ Risk Config</button>
   </div>
 </header>
+
+<!-- Watchlist overlay + panel -->
+<div id="wl-overlay" onclick="maybeCloseWatchlist(event)">
+  <div id="wl-panel">
+    <div class="settings-header">
+      <span>📋 Watchlist</span>
+      <button class="settings-close" onclick="closeWatchlist()">✕</button>
+    </div>
+    <div class="wl-body" id="wl-body">
+      <div style="color:var(--muted);text-align:center;padding:24px">Connecting…</div>
+    </div>
+    <div class="wl-footer">
+      <div id="wl-status"></div>
+      <!-- Add token form -->
+      <div id="wl-add-form">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">New Token</div>
+        <div class="wl-row">
+          <div class="wl-field"><label>Symbol</label><input id="wl-new-symbol" placeholder="e.g. WIF" /></div>
+          <div class="wl-field"><label>Name</label><input id="wl-new-name" placeholder="e.g. dogwifhat" /></div>
+        </div>
+        <div class="wl-field"><label>Mint Address</label><input id="wl-new-mint" placeholder="Base58 mint address" /></div>
+        <div class="wl-row">
+          <div class="wl-field"><label>Max Buy (USDT)</label><input id="wl-new-maxbuy" type="number" value="50" min="1" /></div>
+          <div class="wl-field"><label>Slippage (bps)</label><input id="wl-new-slippage" type="number" value="200" min="10" /></div>
+        </div>
+        <div class="wl-row">
+          <div class="wl-field"><label>Interval</label>
+            <select id="wl-new-interval">
+              <option value="1H">1H</option><option value="4H">4H</option>
+              <option value="1D">1D</option><option value="15m">15m</option>
+            </select>
+          </div>
+          <div class="wl-field"><label>Lookback</label><input id="wl-new-lookback" type="number" value="6" min="2" /></div>
+        </div>
+        <div class="wl-row">
+          <div class="wl-field"><label>Max Amplitude %</label><input id="wl-new-amp" type="number" value="4" step="0.5" /></div>
+          <div class="wl-field"><label>Vol Contraction</label><input id="wl-new-vcr" type="number" value="0.65" step="0.05" /></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="wl-add-cancel" onclick="hideAddForm()">Cancel</button>
+          <button id="wl-add-submit" onclick="submitAddToken()">Add Token</button>
+        </div>
+      </div>
+      <button id="wl-add-btn" onclick="showAddForm()">+ Add Token</button>
+    </div>
+  </div>
+</div>
 
 <!-- Settings overlay + panel -->
 <div id="settings-overlay" onclick="maybeCloseSettings(event)">
@@ -541,6 +708,200 @@ function fmtUptime(sec) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Watchlist panel ────────────────────────────────────────────────────────
+
+let _watchlist = [];   // full token list from server
+
+socket.on('bot:watchlist', ({ tokens, errors }) => {
+  _watchlist = tokens;
+  renderWatchlist();
+  if (errors && errors.length > 0) {
+    setWlStatus('error', '✗ ' + errors.join(' · '));
+  } else if (document.getElementById('wl-overlay').classList.contains('open')) {
+    setWlStatus('ok', '✓ Saved');
+    setTimeout(() => setWlStatus('', ''), 2500);
+  }
+});
+
+function renderWatchlist() {
+  const body = document.getElementById('wl-body');
+  if (_watchlist.length === 0) {
+    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No tokens configured</div>';
+    return;
+  }
+  body.innerHTML = _watchlist.map((t) => buildTokenCard(t)).join('');
+}
+
+function buildTokenCard(t) {
+  const shortMint = t.mint.slice(0, 8) + '…' + t.mint.slice(-6);
+  const batchRows = t.sellBatches.map((b, i) => `
+    <tr>
+      <td><input type="number" id="bm-${t.mint}-${i}" value="${b.priceMultiplier}" step="0.1" min="1.01" /></td>
+      <td><input type="number" id="bp-${t.mint}-${i}" value="${b.portion}" step="0.01" min="0.01" max="1" /></td>
+      <td><button class="batch-del-btn" onclick="deleteBatch('${t.mint}',${i})">✕</button></td>
+    </tr>`).join('');
+
+  return `
+  <div class="wl-card${t.active ? ' active' : ''}" id="wl-card-${t.mint}">
+    <div class="wl-card-head" onclick="toggleCardBody('${t.mint}')">
+      <label class="wl-toggle" onclick="event.stopPropagation()">
+        <input type="checkbox" ${t.active ? 'checked' : ''} onchange="toggleActive('${t.mint}', this.checked)">
+        <span class="wl-slider"></span>
+      </label>
+      <div class="wl-token-label">
+        <b>${escHtml(t.symbol)}</b><span class="wl-name">${escHtml(t.name)}</span>
+        <div class="wl-mint">${shortMint}</div>
+      </div>
+      <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="Remove">✕</button>
+    </div>
+    <div class="wl-card-body" id="wl-body-${t.mint}">
+      <div class="wl-row">
+        <div class="wl-field"><label>Max Buy (USDT)</label>
+          <input type="number" id="wf-maxbuy-${t.mint}" value="${t.maxBuyUsdt}" min="1" step="1" /></div>
+        <div class="wl-field"><label>Slippage (bps)</label>
+          <input type="number" id="wf-slip-${t.mint}" value="${t.slippageBps}" min="10" step="10" /></div>
+      </div>
+      <div class="wl-row">
+        <div class="wl-field"><label>Interval</label>
+          <select id="wf-int-${t.mint}">
+            ${['15m','1H','4H','1D'].map(v => `<option value="${v}"${t.signal.interval===v?' selected':''}>${v}</option>`).join('')}
+          </select></div>
+        <div class="wl-field"><label>Lookback</label>
+          <input type="number" id="wf-look-${t.mint}" value="${t.signal.lookback}" min="2" step="1" /></div>
+      </div>
+      <div class="wl-row">
+        <div class="wl-field"><label>Max Amplitude %</label>
+          <input type="number" id="wf-amp-${t.mint}" value="${t.signal.maxAmplitudePct}" step="0.5" /></div>
+        <div class="wl-field"><label>Vol Contraction</label>
+          <input type="number" id="wf-vcr-${t.mint}" value="${t.signal.volumeContractionRatio}" step="0.05" /></div>
+      </div>
+      <div class="wl-batches-label">Sell Batches</div>
+      <table class="wl-batches-table">
+        <thead><tr><th>Price ×</th><th>Portion</th><th></th></tr></thead>
+        <tbody id="batches-${t.mint}">${batchRows}</tbody>
+      </table>
+      <button class="batch-add-btn" onclick="addBatch('${t.mint}')">+ Add Batch</button>
+      <button class="wl-save-btn" onclick="saveToken('${t.mint}')">Save Changes</button>
+    </div>
+  </div>`;
+}
+
+function toggleCardBody(mint) {
+  const body = document.getElementById('wl-body-' + mint);
+  body.classList.toggle('open');
+}
+
+function toggleActive(mint, active) {
+  socket.emit('watchlist:update', { mint, updates: { active } });
+  // Optimistic UI update for card style
+  const card = document.getElementById('wl-card-' + mint);
+  if (card) card.className = 'wl-card' + (active ? ' active' : '');
+}
+
+function saveToken(mint) {
+  const t = _watchlist.find(t => t.mint === mint);
+  if (!t) return;
+
+  // Read sell batches from DOM
+  const tbody = document.getElementById('batches-' + mint);
+  const rows  = tbody ? tbody.querySelectorAll('tr') : [];
+  const sellBatches = Array.from(rows).map((_, i) => ({
+    priceMultiplier: Number(document.getElementById(`bm-${mint}-${i}`)?.value),
+    portion:         Number(document.getElementById(`bp-${mint}-${i}`)?.value),
+  }));
+
+  const updates = {
+    maxBuyUsdt:  Number(document.getElementById(`wf-maxbuy-${mint}`)?.value),
+    slippageBps: Number(document.getElementById(`wf-slip-${mint}`)?.value),
+    signal: {
+      interval:               document.getElementById(`wf-int-${mint}`)?.value,
+      lookback:               Number(document.getElementById(`wf-look-${mint}`)?.value),
+      maxAmplitudePct:        Number(document.getElementById(`wf-amp-${mint}`)?.value),
+      volumeContractionRatio: Number(document.getElementById(`wf-vcr-${mint}`)?.value),
+    },
+    sellBatches,
+  };
+  socket.emit('watchlist:update', { mint, updates });
+}
+
+function addBatch(mint) {
+  const t = _watchlist.find(t => t.mint === mint);
+  if (!t) return;
+  t.sellBatches.push({ priceMultiplier: 2.0, portion: 0.1 });
+  renderWatchlist();
+  // Re-open the card
+  const body = document.getElementById('wl-body-' + mint);
+  if (body) body.classList.add('open');
+}
+
+function deleteBatch(mint, idx) {
+  const t = _watchlist.find(t => t.mint === mint);
+  if (!t) return;
+  t.sellBatches.splice(idx, 1);
+  renderWatchlist();
+  const body = document.getElementById('wl-body-' + mint);
+  if (body) body.classList.add('open');
+}
+
+function confirmRemove(mint, symbol) {
+  if (!confirm(`Remove ${symbol} from watchlist?`)) return;
+  socket.emit('watchlist:remove', { mint });
+}
+
+// Add token form
+function showAddForm() {
+  document.getElementById('wl-add-form').classList.add('open');
+  document.getElementById('wl-add-btn').style.display = 'none';
+}
+
+function hideAddForm() {
+  document.getElementById('wl-add-form').classList.remove('open');
+  document.getElementById('wl-add-btn').style.display = '';
+}
+
+function submitAddToken() {
+  const token = {
+    symbol:     document.getElementById('wl-new-symbol').value.trim().toUpperCase(),
+    name:       document.getElementById('wl-new-name').value.trim(),
+    mint:       document.getElementById('wl-new-mint').value.trim(),
+    active:     true,
+    maxBuyUsdt: Number(document.getElementById('wl-new-maxbuy').value),
+    slippageBps:Number(document.getElementById('wl-new-slippage').value),
+    signal: {
+      interval:               document.getElementById('wl-new-interval').value,
+      lookback:               Number(document.getElementById('wl-new-lookback').value),
+      maxAmplitudePct:        Number(document.getElementById('wl-new-amp').value),
+      volumeContractionRatio: Number(document.getElementById('wl-new-vcr').value),
+    },
+    sellBatches: [
+      { priceMultiplier: 1.5, portion: 0.34 },
+      { priceMultiplier: 2.0, portion: 0.33 },
+      { priceMultiplier: 3.0, portion: 0.33 },
+    ],
+  };
+  socket.emit('watchlist:add', token);
+  hideAddForm();
+}
+
+function openWatchlist() {
+  document.getElementById('wl-overlay').classList.add('open');
+  socket.emit('watchlist:get');
+}
+
+function closeWatchlist() {
+  document.getElementById('wl-overlay').classList.remove('open');
+}
+
+function maybeCloseWatchlist(e) {
+  if (e.target === document.getElementById('wl-overlay')) closeWatchlist();
+}
+
+function setWlStatus(cls, msg) {
+  const el = document.getElementById('wl-status');
+  el.className = cls ? cls : '';
+  el.textContent = msg;
 }
 
 // ── Settings panel ─────────────────────────────────────────────────────────

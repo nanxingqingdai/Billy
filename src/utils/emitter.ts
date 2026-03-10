@@ -1,4 +1,5 @@
 import type { Server as SocketIOServer } from 'socket.io';
+import type { WatchlistToken } from '../config/watchlist';
 
 // ─── Typed event map ────────────────────────────────────────────────────────
 
@@ -14,6 +15,7 @@ export interface BotEvents {
   'bot:log':      { level: 'INFO' | 'WARN' | 'ERROR'; message: string; timestamp: string };
   'bot:config':   { config: Record<string, number>; errors?: string[] };
   'bot:balance':  { solBalance: number; usdtBalance: number };
+  'bot:watchlist': { tokens: WatchlistToken[]; errors?: string[] };
 }
 
 // ─── Singleton ──────────────────────────────────────────────────────────────

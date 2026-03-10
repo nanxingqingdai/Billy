@@ -7,6 +7,7 @@ import { registerBroadcaster } from './utils/errorHandler';
 import { log } from './utils/logger';
 import { config } from './config/env';
 import { getRiskConfig, updateRiskConfig, RISK_FIELDS } from './config/riskConfig';
+import { getWatchlist, updateToken, addToken, removeToken, WatchlistToken } from './config/watchlist';
 
 export function createAppServer(): { httpServer: ReturnType<typeof createServer>; port: number } {
   const app = express();
@@ -37,6 +38,47 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     // Send current risk config + field metadata immediately on connect
     socket.emit('bot:config', { config: getRiskConfig() });
     socket.emit('bot:config:fields', RISK_FIELDS);
+
+    // Send full watchlist on connect
+    socket.emit('bot:watchlist', { tokens: getWatchlist() });
+
+    // Watchlist handlers
+    socket.on('watchlist:get', () => {
+      socket.emit('bot:watchlist', { tokens: getWatchlist() });
+    });
+
+    socket.on('watchlist:update', ({ mint, updates }: { mint: string; updates: Partial<WatchlistToken> }) => {
+      const errors = updateToken(mint, updates);
+      if (errors.length > 0) {
+        log('WARN', `[Dashboard] Watchlist update rejected: ${errors.join(', ')}`);
+        socket.emit('bot:watchlist', { tokens: getWatchlist(), errors });
+      } else {
+        log('INFO', `[Dashboard] Watchlist updated — mint: ${mint}`);
+        io.emit('bot:watchlist', { tokens: getWatchlist() });
+      }
+    });
+
+    socket.on('watchlist:add', (token: WatchlistToken) => {
+      const errors = addToken(token);
+      if (errors.length > 0) {
+        log('WARN', `[Dashboard] Add token rejected: ${errors.join(', ')}`);
+        socket.emit('bot:watchlist', { tokens: getWatchlist(), errors });
+      } else {
+        log('INFO', `[Dashboard] Token added: ${token.symbol}`);
+        io.emit('bot:watchlist', { tokens: getWatchlist() });
+      }
+    });
+
+    socket.on('watchlist:remove', ({ mint }: { mint: string }) => {
+      const errors = removeToken(mint);
+      if (errors.length > 0) {
+        log('WARN', `[Dashboard] Remove token rejected: ${errors.join(', ')}`);
+        socket.emit('bot:watchlist', { tokens: getWatchlist(), errors });
+      } else {
+        log('INFO', `[Dashboard] Token removed: ${mint}`);
+        io.emit('bot:watchlist', { tokens: getWatchlist() });
+      }
+    });
 
     // Client requests current config
     socket.on('config:get', () => {

@@ -1,5 +1,5 @@
 import { config } from './config/env';
-import { loadWatchlist, WatchlistToken, SellBatch } from './config/watchlist';
+import { getActiveTokens, WatchlistToken, SellBatch } from './config/watchlist';
 import { getRecentOHLCV, getTokenPrice, isLowVolContraction } from './services/birdeye';
 import { buyWithUsdt, getTokenBalance, getSolBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
 import { log } from './utils/logger';
@@ -192,7 +192,14 @@ async function evaluateSell(position: Position, currentPrice: number, batches: S
 
 // ─── Main loop ─────────────────────────────────────────────────────────────
 
-async function runCycle(tokens: WatchlistToken[]): Promise<void> {
+async function runCycle(): Promise<void> {
+  const tokens = getActiveTokens();
+
+  if (tokens.length === 0) {
+    log('WARN', '━━━ No active tokens in watchlist — skipping cycle ━━━');
+    return;
+  }
+
   log('INFO', `━━━ Cycle start | ${tokens.length} tokens | DRY_RUN=${config.dryRun} ━━━`);
   emit('bot:cycle', { phase: 'start', tokenCount: tokens.length, positionCount: positions.size });
 
@@ -220,19 +227,19 @@ async function runCycle(tokens: WatchlistToken[]): Promise<void> {
 }
 
 export async function startMonitor(): Promise<void> {
-  const tokens = loadWatchlist();
-  log('INFO', `Monitor started — watching ${tokens.map((t) => t.symbol).join(', ')}`);
+  const initial = getActiveTokens();
+  log('INFO', `Monitor started — watching ${initial.map((t) => t.symbol).join(', ')} (${initial.length} active)`);
   log('INFO', `Interval: ${config.monitorIntervalSec}s | Max buy: $${config.maxBuyUsdt} USDT | DRY_RUN: ${config.dryRun}`);
   log('INFO', `Risk: stop-loss ${config.stopLossPct}% | max positions ${config.maxOpenPositions} | daily loss cap $${config.maxDailyLossUsdt}`);
 
   emit('bot:status', { running: true, dryRun: config.dryRun, uptimeSec: Math.floor((Date.now() - startedAt) / 1000) });
 
-  await runCycle(tokens);
+  await runCycle();
 
   setInterval(async () => {
     emit('bot:status', { running: true, dryRun: config.dryRun, uptimeSec: Math.floor((Date.now() - startedAt) / 1000) });
     try {
-      await runCycle(tokens);
+      await runCycle();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log('ERROR', `Cycle failed: ${msg}`);
