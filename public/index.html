@@ -291,6 +291,13 @@ socket.on('bot:position', ({ action, symbol, mint, entryPrice, currentPrice, usd
 
 socket.on('bot:log', ({ level, message }) => appendLog(level, message));
 
+socket.on('bot:risk', ({ rule, symbol, detail, blocked }) => {
+  if (blocked) {
+    const label = symbol ? `[${symbol}]` : '';
+    appendLog('WARN', `⛔ Risk ${rule} ${label}: ${detail}`);
+  }
+});
+
 socket.on('bot:error', ({ level, message }) => {
   appendLog('ERROR', `[${level.toUpperCase()}] ${message}`);
   document.getElementById('error-msg').textContent = message;

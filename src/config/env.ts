@@ -16,4 +16,12 @@ export const config = {
   maxBuyUsdt:   Number(process.env['MAX_BUY_USDT']    ?? 50),
   slippageBps:  Number(process.env['SLIPPAGE_BPS']    ?? 100),
   dryRun:       (process.env['DRY_RUN'] ?? 'true') !== 'false',
+
+  // Risk management
+  stopLossPct:          Number(process.env['STOP_LOSS_PCT']          ?? 20),   // sell if down X%
+  maxOpenPositions:     Number(process.env['MAX_OPEN_POSITIONS']     ?? 3),    // max simultaneous holdings
+  maxDailyLossUsdt:     Number(process.env['MAX_DAILY_LOSS_USDT']    ?? 100),  // pause if lost $X today
+  maxHoldHours:         Number(process.env['MAX_HOLD_HOURS']         ?? 72),   // force-sell after X hours
+  maxPriceImpactPct:    Number(process.env['MAX_PRICE_IMPACT_PCT']   ?? 3),    // reject if Jupiter impact > X%
+  minUsdtReserve:       Number(process.env['MIN_USDT_RESERVE']       ?? 20),   // always keep $X USDT untouched
 };

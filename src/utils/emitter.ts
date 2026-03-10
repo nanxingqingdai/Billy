@@ -9,6 +9,7 @@ export interface BotEvents {
   'bot:signal':   { symbol: string; mint: string; price: number };
   'bot:trade':    { type: 'buy' | 'sell'; symbol: string; mint: string; usdtAmount: number; price: number; txid: string; dryRun: boolean; batch?: number };
   'bot:position': { action: 'open' | 'update' | 'close'; symbol: string; mint: string; entryPrice: number; currentPrice: number; usdtSpent: number; pnlPct: number };
+  'bot:risk':     { rule: string; symbol?: string; detail: string; blocked: boolean };
   'bot:error':    { level: 'error' | 'fatal'; message: string; timestamp: string };
   'bot:log':      { level: 'INFO' | 'WARN' | 'ERROR'; message: string; timestamp: string };
 }
