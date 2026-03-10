@@ -1,0 +1,19 @@
+{
+  "tokens": [
+    {
+      "address": "So11111111111111111111111111111111111111112",
+      "symbol": "SOL",
+      "note": "Wrapped SOL - for testing only"
+    },
+    {
+      "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "symbol": "BONK",
+      "note": "Bonk memecoin"
+    },
+    {
+      "address": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+      "symbol": "WIF",
+      "note": "dogwifhat"
+    }
+  ]
+}

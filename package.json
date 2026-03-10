@@ -1,0 +1,21 @@
+{
+  "name": "billy-memecoin-bot",
+  "version": "0.1.0",
+  "description": "Solana memecoin quantitative trading bot - signal monitor",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "monitor": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}
