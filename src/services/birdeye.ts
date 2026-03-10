@@ -94,6 +94,23 @@ export async function getTokenPrice(mintAddress: string): Promise<TokenPrice> {
   return res.data.data;
 }
 
+/**
+ * Fetch the most recent N candles for a token (lightweight, single request).
+ * Use this in the monitor loop — faster than getAllOHLCV.
+ */
+export async function getRecentOHLCV(
+  mintAddress: string,
+  interval: KlineInterval,
+  limit = 20
+): Promise<OHLCVCandle[]> {
+  const now = Math.floor(Date.now() / 1000);
+  const timeFrom = now - intervalToSeconds(interval) * limit;
+  const res = await client.get<{ data: { items: OHLCVCandle[] } }>('/defi/ohlcv', {
+    params: { address: mintAddress, type: interval, time_from: timeFrom, time_to: now },
+  });
+  return res.data.data.items ?? [];
+}
+
 /** Single-page OHLCV fetch (internal). Returns up to BATCH_SIZE candles ending at timeTo. */
 const BATCH_SIZE = 1000;
 
