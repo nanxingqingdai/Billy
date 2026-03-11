@@ -2,7 +2,7 @@ import * as path from 'path';
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { registerIO } from './utils/emitter';
+import { registerIO, getLatest } from './utils/emitter';
 import { registerBroadcaster } from './utils/errorHandler';
 import { log } from './utils/logger';
 import { config } from './config/env';
@@ -41,6 +41,14 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
 
     // Send full watchlist on connect
     socket.emit('bot:watchlist', { tokens: getWatchlist() });
+
+    // Push latest cached state so dashboard shows correct status immediately
+    const lastStatus  = getLatest('bot:status');
+    const lastBalance = getLatest('bot:balance');
+    const lastCycle   = getLatest('bot:cycle');
+    if (lastStatus)  socket.emit('bot:status',  lastStatus);
+    if (lastBalance) socket.emit('bot:balance',  lastBalance);
+    if (lastCycle)   socket.emit('bot:cycle',    lastCycle);
 
     // Watchlist handlers
     socket.on('watchlist:get', () => {

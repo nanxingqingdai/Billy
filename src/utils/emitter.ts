@@ -22,10 +22,18 @@ export interface BotEvents {
 
 let _io: SocketIOServer | null = null;
 
+// Cache latest payload for key events so new clients get immediate state
+const _cache = new Map<string, unknown>();
+
 export function registerIO(io: SocketIOServer): void {
   _io = io;
 }
 
 export function emit<K extends keyof BotEvents>(event: K, data: BotEvents[K]): void {
+  _cache.set(event, data);
   _io?.emit(event, data);
+}
+
+export function getLatest<K extends keyof BotEvents>(event: K): BotEvents[K] | undefined {
+  return _cache.get(event) as BotEvents[K] | undefined;
 }
