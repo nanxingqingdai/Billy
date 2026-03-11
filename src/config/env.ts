@@ -4,7 +4,12 @@ dotenv.config();
 export const config = {
   rpcUrl:           process.env['RPC_URL'] ?? 'https://api.mainnet-beta.solana.com',
   walletPrivateKey: process.env['WALLET_PRIVATE_KEY'] ?? '',
-  birdeyeApiKey:    process.env['BIRDEYE_API_KEY'] ?? '',
+  // 支持逗号分隔多个 key: BIRDEYE_API_KEY=key1,key2,key3
+  birdeyeApiKey:  (process.env['BIRDEYE_API_KEY'] ?? '').split(',')[0]?.trim() ?? '',
+  birdeyeApiKeys: (process.env['BIRDEYE_API_KEY'] ?? '')
+    .split(',')
+    .map(k => k.trim())
+    .filter(Boolean),
 
   // Dashboard
   dashboardPort: Number(process.env['DASHBOARD_PORT'] ?? 3000),

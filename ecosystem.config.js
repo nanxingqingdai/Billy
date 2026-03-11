@@ -3,8 +3,10 @@ require('dotenv').config(); // load .env before PM2 reads env block
 module.exports = {
   apps: [
     {
-      name: 'solana-meme-bot',
-      script: 'dist/index.js',
+      name: 'billycode',
+      script: 'src/index.ts',
+      interpreter: 'node',
+      interpreter_args: '-r ts-node/register',
       cwd: __dirname,
 
       // Single instance — trading bot must not run in parallel

@@ -9,7 +9,7 @@ import { config } from '../config/env';
 import { keypairFromBase58 } from '../utils/keypair';
 import { log } from '../utils/logger';
 
-const QUOTE_API = 'https://quote-api.jup.ag/v6';
+const QUOTE_API = 'https://lite-api.jup.ag/swap/v1';
 
 // ─── Common mint addresses ─────────────────────────────────────────────────
 

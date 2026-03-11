@@ -1,6 +1,6 @@
 import { config } from './config/env';
 import { getActiveTokens, WatchlistToken, SellBatch } from './config/watchlist';
-import { getRecentOHLCV, getTokenPrice, isLowVolContraction } from './services/birdeye';
+import { getRecentOHLCV, getTokenPrice, isLowVolContraction, checkEntryPreConditions, getTokenOverview } from './services/birdeye';
 import { buyWithUsdt, getTokenBalance, getSolBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
 import { log } from './utils/logger';
 import { emit } from './utils/emitter';
@@ -11,6 +11,7 @@ import {
   PositionSnapshot,
 } from './strategies/riskManager';
 import { loadPositions, savePositions, Position } from './utils/positionStore';
+import { notifyBuySignal } from './services/telegramNotifier';
 
 // ─── Position tracking ─────────────────────────────────────────────────────
 
@@ -55,7 +56,14 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       return;
     }
 
-    // ── No position: check buy signal ────────────────────────────────────
+    // ── No position: entry pre-conditions → main signal ──────────────────
+    const pre = await checkEntryPreConditions(mint);
+    if (!pre.passed) {
+      log('INFO', `[${symbol}] Pre-condition blocked: ${pre.reason}`);
+      return;
+    }
+    log('INFO', `[${symbol}] Pre-conditions OK — drawdown ${pre.drawdownPct.toFixed(1)}% | age ${Math.floor(pre.ageDays)}d | ampBars ${pre.lowAmpBars} | volBars ${pre.lowVolBars} (< $${pre.volThresholdUsd.toLocaleString()})`);
+
     const triggered = isLowVolContraction(candles, {
       lookback: signal.lookback,
       maxAmplitudePct: signal.maxAmplitudePct,
@@ -77,6 +85,20 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
 
     const riskResult = runBuyChecks(symbol, positions.size, usdtBalance, solBalance, buyAmount, quote);
 
+    // ── TG 通知（无论是否 dryRun，只要信号有效就通知） ──────────────────
+    await notifyBuySignal({
+      symbol,
+      mint,
+      athMarketCapUsd: pre.athMarketCapUsd,
+      drawdownPct:     pre.drawdownPct,
+      lowAmpBars:      pre.lowAmpBars,
+      lowVolBars:      pre.lowVolBars,
+      volThresholdUsd: pre.volThresholdUsd,
+      path:            pre.path,
+      priceImpactPct:  parseFloat(quote.priceImpactPct),
+      buyAmountUsdt:   buyAmount,
+    });
+
     if (!riskResult.ok) {
       log('WARN', `[${symbol}] Buy blocked by risk (${riskResult.rule}): ${riskResult.detail}`);
       return;
@@ -92,8 +114,8 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       return;
     }
 
-    const tokenBal = await getTokenBalance(mint);
-    positions.set(mint, { mint, symbol, entryPrice: currentPrice, usdtSpent: buyAmount, tokenBalance: tokenBal, decimals: 0, batchesSold: new Set(), boughtAt: Math.floor(Date.now() / 1000) });
+    const [tokenBal, overview] = await Promise.all([getTokenBalance(mint), getTokenOverview(mint)]);
+    positions.set(mint, { mint, symbol, entryPrice: currentPrice, usdtSpent: buyAmount, tokenBalance: tokenBal, decimals: overview.decimals, batchesSold: new Set(), boughtAt: Math.floor(Date.now() / 1000) });
     savePositions(positions);
     emit('bot:position', { action: 'open', symbol, mint, entryPrice: currentPrice, currentPrice, usdtSpent: buyAmount, pnlPct: 0 });
     log('INFO', `[${symbol}] Position opened — ${buyAmount} USDT @ $${currentPrice.toFixed(6)} | tx: ${result.txid}`);

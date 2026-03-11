@@ -13,9 +13,18 @@
       "volumeContractionRatio": 0.65
     },
     "sellBatches": [
-      { "priceMultiplier": 1.3, "portion": 0.34 },
-      { "priceMultiplier": 1.6, "portion": 0.33 },
-      { "priceMultiplier": 2.0, "portion": 0.33 }
+      {
+        "priceMultiplier": 1.3,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 1.6,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      }
     ]
   },
   {
@@ -32,9 +41,18 @@
       "volumeContractionRatio": 0.65
     },
     "sellBatches": [
-      { "priceMultiplier": 1.5, "portion": 0.34 },
-      { "priceMultiplier": 2.0, "portion": 0.33 },
-      { "priceMultiplier": 3.0, "portion": 0.33 }
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
     ]
   },
   {
@@ -51,9 +69,466 @@
       "volumeContractionRatio": 0.65
     },
     "sellBatches": [
-      { "priceMultiplier": 1.5, "portion": 0.34 },
-      { "priceMultiplier": 2.0, "portion": 0.33 },
-      { "priceMultiplier": 3.0, "portion": 0.33 }
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "QUEST",
+    "name": "StreamQuest",
+    "mint": "9EnydDKQL2KeE4Eq9FcWuDMpaBs8q4iyt2MPayWSpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "BUZZ",
+    "name": "Hive AI",
+    "mint": "9DHe3pycTuymFk4H4bbPoAJ4hQrr2kaLDF6J6aAKpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "DARK",
+    "name": "Dark Eclipse",
+    "mint": "8BtoThi2ZoXnF7QQK1Wjmh2JuBw9FjVvhnGMVZ2vpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "KIND",
+    "name": "KindnessCoin",
+    "mint": "V5cCiSixPLAiEDX2zZquT5VuLm4prr5t35PWmjNpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "FTP",
+    "name": "Feed The People",
+    "mint": "J2eaKn35rp82T6RFEsNK9CLRHEKV9BLXjedFM3q6pump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "STREAM",
+    "name": "streamdotfun",
+    "mint": "2EYvskXTncMS11vejJcWHh8fPaCFy6bzDcVnmofEpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "$Runner ",
+    "name": "live on treadmill till 100mill",
+    "mint": "FyB8VxxYAaVVchAgbB1kvjWdw26ovaD4ipwV1j8epump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "QTO",
+    "name": "Quanto",
+    "mint": "quantoL84tL1HvygKcz3TJtWRU6dFPW8imMzCa4qxGW",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "NYX",
+    "name": "Nyx Eternal",
+    "mint": "7W4geAJyy7hxuPXESMMBaW8Zi4MbhVN9uvt6BJ2SEPAV",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "pibble",
+    "name": "pibble",
+    "mint": "Eppcp4FhG6wmaRno3omWWvKsZHbzucVLR316SdXopump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "CELL",
+    "name": "Cell Token",
+    "mint": "E2gLkTXSbbTMmJM19xkquawun2ShJSi7G59A8c2PtbFa",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "PMX",
+    "name": "PMX",
+    "mint": "J27UYHX5oeaG1YbUGQc8BmJySXDjNWChdGB2Pi2TMDAq",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "CAP",
+    "name": "Cap",
+    "mint": "7E2iF4WFs5biCtkAVFCBPEdnpg7t2D19VzxjxEPvpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "LION",
+    "name": "The Lion",
+    "mint": "8NfK7b9u1RvMpHJnAnZki4mNQwjhvzrVZs7bRQatpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "Rome",
+    "name": "All Roads Lead To Rome",
+    "mint": "8ZeTmGGktvSwSSghx8btbTAVGdWogThKM4DQBJgRpump",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
+    ]
+  },
+  {
+    "symbol": "MODRIC",
+    "name": "Luka Modric",
+    "mint": "F5qFr17LeunQk5ikRM9hseSi2bbZYXYRum8zaTegtrnd",
+    "active": true,
+    "maxBuyUsdt": 30,
+    "slippageBps": 300,
+    "signal": {
+      "interval": "1H",
+      "lookback": 6,
+      "maxAmplitudePct": 4,
+      "volumeContractionRatio": 0.65
+    },
+    "sellBatches": [
+      {
+        "priceMultiplier": 1.5,
+        "portion": 0.34
+      },
+      {
+        "priceMultiplier": 2,
+        "portion": 0.33
+      },
+      {
+        "priceMultiplier": 3,
+        "portion": 0.33
+      }
     ]
   }
 ]

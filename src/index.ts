@@ -5,6 +5,9 @@ import { log } from './utils/logger';
 import { config } from './config/env';
 import { createAppServer } from './server';
 import { startMonitor } from './monitor';
+import { startMoonshotListener } from './services/moonshotListener';
+import { notifyStartup, isTelegramConfigured } from './services/telegramNotifier';
+import { getActiveTokens } from './config/watchlist';
 
 async function main(): Promise<void> {
   log('INFO', '========================================');
@@ -32,6 +35,17 @@ async function main(): Promise<void> {
   httpServer.listen(port, () => {
     log('INFO', `Dashboard running at http://localhost:${port}`);
   });
+
+  // Start Moonshot channel listener (auto-discovers new tokens)
+  startMoonshotListener();
+
+  // TG 启动通知
+  if (isTelegramConfigured()) {
+    await notifyStartup(getActiveTokens().length);
+    log('INFO', 'Telegram notifier: configured ✅');
+  } else {
+    log('WARN', 'Telegram notifier: TG_BOT_TOKEN / TG_CHAT_ID not set — notifications disabled');
+  }
 
   // Start monitor loop
   await startMonitor();
