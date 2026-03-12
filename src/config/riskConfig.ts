@@ -47,7 +47,9 @@ export const RISK_FIELDS: RiskField[] = [
 
 // ─── Persistence ───────────────────────────────────────────────────────────
 
-const CONFIG_FILE = path.resolve(process.cwd(), 'risk-config.json');
+const DATA_DIR    = path.resolve(process.cwd(), 'data');
+const CONFIG_FILE = path.join(DATA_DIR, 'risk-config.json');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function envDefaults(): RiskConfig {
   return {

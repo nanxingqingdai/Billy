@@ -32,7 +32,7 @@ const TG_CHANNELS = [
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
 /** 已见过的 CA 持久化文件，防止重复处理 */
-const SEEN_FILE = path.resolve(process.cwd(), 'moonshot-seen.json');
+const SEEN_FILE = path.resolve(process.cwd(), 'data', 'moonshot-seen.json');
 
 /** 新代币加入 watchlist 时的默认参数 */
 const DEFAULT_TOKEN_PARAMS = {

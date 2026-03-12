@@ -3,7 +3,7 @@ import * as path from 'path';
 
 // ─── File setup ─────────────────────────────────────────────────────────────
 
-const LOG_DIR  = path.resolve(process.cwd(), 'logs');
+const LOG_DIR  = path.resolve(process.cwd(), 'data', 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'bot.log');
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB before rotation
 

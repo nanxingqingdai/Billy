@@ -34,7 +34,9 @@ export type TokenUpdate = Partial<Pick<WatchlistToken,
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 
-const WATCHLIST_FILE = path.resolve(process.cwd(), 'watchlist.json');
+const DATA_DIR       = path.resolve(process.cwd(), 'data');
+const WATCHLIST_FILE = path.join(DATA_DIR, 'watchlist.json');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function readFromDisk(): WatchlistToken[] {
   if (!fs.existsSync(WATCHLIST_FILE)) {

@@ -10,13 +10,19 @@ node_modules/
 # TypeScript cache
 *.tsbuildinfo
 
-# Logs — keep the directory, ignore log files
-logs/*.log
+# Logs
 *.log
 
-# Runtime state files (user-specific, regenerated at runtime)
-risk-config.json
+# data/ 目录：同步 watchlist 和 risk-config，忽略纯运行时文件
+data/positions.json
+data/moonshot-seen.json
+data/logs/
+
+# 根目录旧数据文件（已迁移到 data/）
+watchlist.json
+moonshot-seen.json
 positions.json
+risk-config.json
 
 # OS
 .DS_Store

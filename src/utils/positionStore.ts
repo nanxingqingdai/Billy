@@ -22,7 +22,9 @@ interface PersistedPosition extends Omit<Position, 'batchesSold'> {
 
 // ─── File path ──────────────────────────────────────────────────────────────
 
-const STORE_FILE = path.resolve(process.cwd(), 'positions.json');
+const DATA_DIR   = path.resolve(process.cwd(), 'data');
+const STORE_FILE = path.join(DATA_DIR, 'positions.json');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // ─── Load ────────────────────────────────────────────────────────────────────
 
