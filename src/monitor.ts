@@ -19,17 +19,52 @@ const positions = loadPositions();
 const startedAt = Date.now();
 
 // ─── Signal cooldown (prevent repeated TG notifications for the same token) ─
+//   Mature (>40d) : 48 小时冷却
+//   Young  (≤40d) : 4 小时冷却，且每自然日最多通知 2 次
 
-const SIGNAL_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
-const _lastSignalTime = new Map<string, number>(); // mint → timestamp
+import type { TokenPath } from './services/birdeye';
 
-function isSignalOnCooldown(mint: string): boolean {
+const COOLDOWN_MATURE_MS        = 48 * 60 * 60 * 1000;
+const COOLDOWN_YOUNG_MS         =  4 * 60 * 60 * 1000;
+const YOUNG_MAX_PER_DAY         = 2;
+
+const _lastSignalTime  = new Map<string, number>();                          // mint → last notify timestamp
+const _dailyCount      = new Map<string, { dateUtc: string; count: number }>(); // mint → daily count
+
+function todayUtc(): string { return new Date().toISOString().slice(0, 10); }
+
+/**
+ * Returns null if OK to send, or a human-readable reason string if blocked.
+ */
+function signalBlockReason(mint: string, path: TokenPath): string | null {
+  const cooldownMs = path === 'mature' ? COOLDOWN_MATURE_MS : COOLDOWN_YOUNG_MS;
   const last = _lastSignalTime.get(mint);
-  return last !== undefined && Date.now() - last < SIGNAL_COOLDOWN_MS;
+  if (last !== undefined && Date.now() - last < cooldownMs) {
+    const remainMin = Math.ceil((cooldownMs - (Date.now() - last)) / 60_000);
+    const label = path === 'mature' ? '48h' : '4h';
+    return `${label} 冷却中，还需 ${remainMin} 分钟`;
+  }
+  if (path !== 'mature') {
+    const today = todayUtc();
+    const daily = _dailyCount.get(mint);
+    if (daily && daily.dateUtc === today && daily.count >= YOUNG_MAX_PER_DAY) {
+      return `今日已通知 ${YOUNG_MAX_PER_DAY} 次，明日 UTC 0 点重置`;
+    }
+  }
+  return null;
 }
 
-function markSignalSent(mint: string): void {
+function markSignalSent(mint: string, path: TokenPath): void {
   _lastSignalTime.set(mint, Date.now());
+  if (path !== 'mature') {
+    const today = todayUtc();
+    const daily = _dailyCount.get(mint);
+    if (!daily || daily.dateUtc !== today) {
+      _dailyCount.set(mint, { dateUtc: today, count: 1 });
+    } else {
+      _dailyCount.set(mint, { dateUtc: today, count: daily.count + 1 });
+    }
+  }
 }
 
 // ─── Single token scan ─────────────────────────────────────────────────────
@@ -92,10 +127,10 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     log('INFO', `[${symbol}] *** BUY SIGNAL detected ***`);
     emit('bot:signal', { symbol, mint, price: currentPrice });
 
-    // ── 冷却期检查：4 小时内同一代币不重复通知 ───────────────────────────
-    if (isSignalOnCooldown(mint)) {
-      const remainMin = Math.ceil((SIGNAL_COOLDOWN_MS - (Date.now() - (_lastSignalTime.get(mint) ?? 0))) / 60_000);
-      log('INFO', `[${symbol}] 信号冷却中，距下次通知还有 ${remainMin} 分钟`);
+    // ── 冷却期 / 每日次数检查 ─────────────────────────────────────────────
+    const blockReason = signalBlockReason(mint, pre.path);
+    if (blockReason) {
+      log('INFO', `[${symbol}] 通知已屏蔽（${blockReason}）`);
       return;
     }
 
@@ -119,7 +154,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       priceImpactPct:  parseFloat(quote.priceImpactPct),
       buyAmountUsdt:   buyAmount,
     });
-    markSignalSent(mint); // 开始 4 小时冷却
+    markSignalSent(mint, pre.path);
 
     if (!riskResult.ok) {
       log('WARN', `[${symbol}] Buy blocked by risk (${riskResult.rule}): ${riskResult.detail}`);
