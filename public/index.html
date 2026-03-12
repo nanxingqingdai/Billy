@@ -387,12 +387,12 @@
       <div class="stat-label">上次扫描</div>
       <div class="stat-value" id="stat-cycle" style="font-size:13px;padding-top:4px">—</div>
     </div>
-    <div class="stat">
-      <div class="stat-label">USDT 余额</div>
+    <div class="stat" style="cursor:pointer" onclick="openWallet()" title="点击查看充值地址">
+      <div class="stat-label">USDT 余额 <span style="color:var(--blue);font-size:9px">▼ 充值</span></div>
       <div class="stat-value" id="stat-usdt" style="font-size:16px;padding-top:2px">—</div>
     </div>
-    <div class="stat" id="stat-sol-card">
-      <div class="stat-label">SOL 余额</div>
+    <div class="stat" id="stat-sol-card" style="cursor:pointer" onclick="openWallet()" title="点击查看充值地址">
+      <div class="stat-label">SOL 余额 <span style="color:var(--blue);font-size:9px">▼ 充值</span></div>
       <div class="stat-value" id="stat-sol" style="font-size:16px;padding-top:2px">—</div>
     </div>
   </div>
@@ -490,7 +490,20 @@
   <div class="err-msg" id="error-msg"></div>
 </div>
 
+<!-- 钱包充值弹窗 -->
+<div id="wallet-overlay" onclick="maybeCloseWallet(event)" style="display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);align-items:center;justify-content:center;">
+  <div id="wallet-modal" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:340px;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;">
+    <button onclick="closeWallet()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+    <div style="font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--text)">充值地址（Solana 网络）</div>
+    <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.6">SOL 和 USDT (SPL) 均使用同一地址<br>请在交易所选择 <b style="color:var(--yellow)">Solana</b> 网络提币</div>
+    <canvas id="wallet-qr" style="border-radius:8px;background:#fff;padding:8px;"></canvas>
+    <div id="wallet-addr" style="font-size:10px;color:var(--muted);word-break:break-all;text-align:center;font-family:monospace;line-height:1.6;max-width:280px;"></div>
+    <button onclick="copyWalletAddr()" id="wallet-copy-btn" style="background:var(--blue);color:#000;border:none;border-radius:6px;padding:8px 24px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;width:100%;transition:opacity .15s;">复制地址</button>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script>
 const socket = io();
 
@@ -1073,6 +1086,45 @@ function setSettingsStatus(cls, msg) {
   const el = document.getElementById('settings-status');
   el.className = 'settings-status' + (cls ? ' ' + cls : '');
   el.textContent = msg;
+}
+
+// ── 钱包充值弹窗 ───────────────────────────────────────────────────────────
+
+let _walletAddress = '';
+
+socket.on('bot:wallet', ({ address }) => {
+  _walletAddress = address;
+});
+
+function openWallet() {
+  if (!_walletAddress) return;
+  document.getElementById('wallet-addr').textContent = _walletAddress;
+  const overlay = document.getElementById('wallet-overlay');
+  overlay.style.display = 'flex';
+  QRCode.toCanvas(
+    document.getElementById('wallet-qr'),
+    _walletAddress,
+    { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } },
+    function(err) { if (err) console.warn('QR error:', err); }
+  );
+}
+
+function closeWallet() {
+  document.getElementById('wallet-overlay').style.display = 'none';
+}
+
+function maybeCloseWallet(e) {
+  if (e.target === document.getElementById('wallet-overlay')) closeWallet();
+}
+
+function copyWalletAddr() {
+  if (!_walletAddress) return;
+  navigator.clipboard.writeText(_walletAddress).then(() => {
+    const btn = document.getElementById('wallet-copy-btn');
+    btn.textContent = '已复制 ✓';
+    btn.style.opacity = '.7';
+    setTimeout(() => { btn.textContent = '复制地址'; btn.style.opacity = '1'; }, 2000);
+  });
 }
 </script>
 </body>
