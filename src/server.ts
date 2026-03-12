@@ -10,10 +10,18 @@ import { getRiskConfig, updateRiskConfig, RISK_FIELDS } from './config/riskConfi
 import { getWatchlist, updateToken, addToken, removeToken, WatchlistToken } from './config/watchlist';
 import { keypairFromBase58 } from './utils/keypair';
 import { config as appConfig } from './config/env';
+import QRCode from 'qrcode';
 
 const walletAddress = appConfig.walletPrivateKey
   ? keypairFromBase58(appConfig.walletPrivateKey).publicKey.toBase58()
   : '';
+
+let walletQrDataUrl = '';
+if (walletAddress) {
+  QRCode.toDataURL(walletAddress, { width: 200, margin: 1 })
+    .then(url => { walletQrDataUrl = url; })
+    .catch(() => {});
+}
 
 export function createAppServer(): { httpServer: ReturnType<typeof createServer>; port: number } {
   const app = express();
@@ -41,8 +49,8 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
   io.on('connection', (socket) => {
     log('INFO', `[Dashboard] Client connected: ${socket.id}`);
 
-    // Send wallet address immediately on connect
-    socket.emit('bot:wallet', { address: walletAddress });
+    // Send wallet address + QR code immediately on connect
+    socket.emit('bot:wallet', { address: walletAddress, qr: walletQrDataUrl });
 
     // Send current risk config + field metadata immediately on connect
     socket.emit('bot:config', { config: getRiskConfig() });

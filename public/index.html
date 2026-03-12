@@ -496,14 +496,13 @@
     <button onclick="closeWallet()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
     <div style="font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--text)">充值地址（Solana 网络）</div>
     <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.6">SOL 和 USDT (SPL) 均使用同一地址<br>请在交易所选择 <b style="color:var(--yellow)">Solana</b> 网络提币</div>
-    <canvas id="wallet-qr" style="border-radius:8px;background:#fff;padding:8px;"></canvas>
+    <img id="wallet-qr" style="border-radius:8px;background:#fff;padding:8px;width:200px;height:200px;" />
     <div id="wallet-addr" style="font-size:10px;color:var(--muted);word-break:break-all;text-align:center;font-family:monospace;line-height:1.6;max-width:280px;"></div>
     <button onclick="copyWalletAddr()" id="wallet-copy-btn" style="background:var(--blue);color:#000;border:none;border-radius:6px;padding:8px 24px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;width:100%;transition:opacity .15s;">复制地址</button>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script>
 const socket = io();
 
@@ -1091,22 +1090,18 @@ function setSettingsStatus(cls, msg) {
 // ── 钱包充值弹窗 ───────────────────────────────────────────────────────────
 
 let _walletAddress = '';
+let _walletQr = '';
 
-socket.on('bot:wallet', ({ address }) => {
+socket.on('bot:wallet', ({ address, qr }) => {
   _walletAddress = address;
+  _walletQr = qr || '';
 });
 
 function openWallet() {
   if (!_walletAddress) return;
   document.getElementById('wallet-addr').textContent = _walletAddress;
-  const overlay = document.getElementById('wallet-overlay');
-  overlay.style.display = 'flex';
-  QRCode.toCanvas(
-    document.getElementById('wallet-qr'),
-    _walletAddress,
-    { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } },
-    function(err) { if (err) console.warn('QR error:', err); }
-  );
+  if (_walletQr) document.getElementById('wallet-qr').src = _walletQr;
+  document.getElementById('wallet-overlay').style.display = 'flex';
 }
 
 function closeWallet() {
@@ -1119,12 +1114,31 @@ function maybeCloseWallet(e) {
 
 function copyWalletAddr() {
   if (!_walletAddress) return;
-  navigator.clipboard.writeText(_walletAddress).then(() => {
-    const btn = document.getElementById('wallet-copy-btn');
+  const btn = document.getElementById('wallet-copy-btn');
+
+  // 优先使用 clipboard API，HTTP 局域网降级到 execCommand
+  const doFeedback = () => {
     btn.textContent = '已复制 ✓';
-    btn.style.opacity = '.7';
-    setTimeout(() => { btn.textContent = '复制地址'; btn.style.opacity = '1'; }, 2000);
-  });
+    btn.style.background = 'var(--green)';
+    setTimeout(() => { btn.textContent = '复制地址'; btn.style.background = 'var(--blue)'; }, 2000);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(_walletAddress).then(doFeedback).catch(fallback);
+  } else {
+    fallback();
+  }
+
+  function fallback() {
+    const ta = document.createElement('textarea');
+    ta.value = _walletAddress;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); doFeedback(); } catch(e) { btn.textContent = '复制失败'; }
+    document.body.removeChild(ta);
+  }
 }
 </script>
 </body>
