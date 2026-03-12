@@ -14,6 +14,7 @@ import { loadPositions, savePositions, Position } from './utils/positionStore';
 import { notifyBuySignal } from './services/telegramNotifier';
 import { isGeminiConfigured, screenToken } from './services/gemini';
 import { recordDailySignal, recordDailyTrade } from './services/dailySummary';
+import { isKimiConfigured, getTokenCommentary, getSignalSecondOpinion } from './services/kimi';
 
 // ─── Position tracking ─────────────────────────────────────────────────────
 
@@ -86,6 +87,21 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
 
     log('INFO', `[${symbol}] Price: $${currentPrice.toFixed(6)}  24h: ${priceData.priceChange24h >= 0 ? '+' : ''}${priceData.priceChange24h?.toFixed(2) ?? '?'}%`);
     emit('bot:price', { symbol, mint, price: currentPrice, change24h: priceData.priceChange24h ?? 0 });
+
+    // ── Kimi 行情解读（fire-and-forget，不阻塞扫描循环）─────────────────
+    if (isKimiConfigured()) {
+      const pos = positions.get(mint);
+      getTokenCommentary({
+        symbol,
+        price:       currentPrice,
+        change24h:   priceData.priceChange24h ?? 0,
+        hasPosition: Boolean(pos),
+        entryPrice:  pos?.entryPrice,
+        pnlPct:      pos ? ((currentPrice - pos.entryPrice) / pos.entryPrice) * 100 : undefined,
+      }).then(text => {
+        if (text) emit('bot:commentary', { symbol, mint, text });
+      }).catch(() => {});
+    }
 
     // ── Open position: run position-level risk checks first ──────────────
     const position = positions.get(mint);

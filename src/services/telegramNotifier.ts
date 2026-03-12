@@ -11,6 +11,7 @@ import { log } from '../utils/logger';
 import { getDexScreenerSummary } from './dexscreener';
 import type { TokenPath } from './birdeye';
 import { isGeminiConfigured, generateSignalAnalysis } from './gemini';
+import { isKimiConfigured, getSignalSecondOpinion } from './kimi';
 
 const BOT_TOKEN = process.env.TG_BOT_TOKEN ?? '';
 const CHAT_ID   = process.env.TG_CHAT_ID   ?? '';
@@ -158,21 +159,23 @@ export async function notifyBuySignal(p: BuySignalParams): Promise<void> {
   const dexUrl  = `https://dexscreener.com/solana/${p.mint}`;
   const birdUrl = `https://birdeye.so/token/${p.mint}?chain=solana`;
 
-  // ── Gemini AI 信号分析 ────────────────────────────────────────────────
-  let aiAnalysis = '';
-  if (isGeminiConfigured()) {
-    aiAnalysis = await generateSignalAnalysis({
-      symbol:          p.symbol,
-      athMarketCapUsd: p.athMarketCapUsd,
-      drawdownPct:     p.drawdownPct,
-      ageDays:         p.ageDays,
-      lowAmpBars:      p.lowAmpBars,
-      lowVolBars:      p.lowVolBars,
-      priceImpactPct:  p.priceImpactPct,
-      marketCapStr,
-      change24hStr,
-    });
-  }
+  // ── Gemini AI 信号分析 + Kimi 第二视角（并行请求，节省时间）────────────
+  const analysisInput = {
+    symbol:          p.symbol,
+    athMarketCapUsd: p.athMarketCapUsd,
+    drawdownPct:     p.drawdownPct,
+    ageDays:         p.ageDays,
+    lowAmpBars:      p.lowAmpBars,
+    lowVolBars:      p.lowVolBars,
+    priceImpactPct:  p.priceImpactPct,
+    marketCapStr,
+    change24hStr,
+  };
+
+  const [aiAnalysis, kimiOpinion] = await Promise.all([
+    isGeminiConfigured() ? generateSignalAnalysis(analysisInput) : Promise.resolve(''),
+    isKimiConfigured()   ? getSignalSecondOpinion(analysisInput) : Promise.resolve(''),
+  ]);
 
   const text = [
     `🚨 <b>买入信号 — ${p.symbol}</b>`,
@@ -187,7 +190,8 @@ export async function notifyBuySignal(p: BuySignalParams): Promise<void> {
     `  📅 代币年龄: ${ageDaysStr} 天`,
     ``,
     conclusion,
-    aiAnalysis ? `\n🤖 <b>AI 分析</b>\n${aiAnalysis}` : '',
+    aiAnalysis   ? `\n🤖 <b>Gemini 分析</b>\n${aiAnalysis}` : '',
+    kimiOpinion  ? `\n🦋 <b>Kimi 分析</b>\n${kimiOpinion}`  : '',
     ``,
     `🔗 <a href="${dexUrl}">DexScreener</a>  |  <a href="${birdUrl}">Birdeye</a>`,
     ``,

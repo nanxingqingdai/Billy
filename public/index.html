@@ -570,12 +570,13 @@ const socket = io();
 
 // ── State ──────────────────────────────────────────────────────────────────
 const state = {
-  positions: {},   // mint → { symbol, entryPrice, currentPrice, usdtSpent, pnlPct }
-  prices:    {},   // mint → { symbol, price, change24h, updatedAt }
-  trades:    [],   // [ { time, type, symbol, price, usdtAmount, txid, dryRun, batch } ]
-  signals:   0,
+  positions:   {},   // mint → { symbol, entryPrice, currentPrice, usdtSpent, pnlPct }
+  prices:      {},   // mint → { symbol, price, change24h, updatedAt }
+  commentary:  {},   // mint → { symbol, text }   ← Kimi 行情解读
+  trades:      [],   // [ { time, type, symbol, price, usdtAmount, txid, dryRun, batch } ]
+  signals:     0,
   tradesCount: 0,
-  lastCycle: null,
+  lastCycle:   null,
 };
 
 // ── localStorage 持久化 ────────────────────────────────────────────────────
@@ -722,6 +723,11 @@ socket.on('bot:error', ({ level, message }) => {
   document.getElementById('error-banner').style.display = 'block';
 });
 
+socket.on('bot:commentary', ({ symbol, mint, text }) => {
+  state.commentary[mint] = { symbol, text };
+  renderPrices();
+});
+
 // ── Render helpers ─────────────────────────────────────────────────────────
 
 function renderPositions() {
@@ -753,8 +759,12 @@ function renderPrices() {
       const chg      = p.change24h ?? 0;
       const chgClass = chg >= 0 ? 'up' : 'down';
       const chgSign  = chg >= 0 ? '+' : '';
+      const note     = state.commentary[p.mint]?.text ?? '';
+      const noteLine = note
+        ? `<div style="font-size:10px;color:var(--muted);font-style:italic;margin-top:3px;max-width:180px;white-space:normal;line-height:1.4">🦋 ${escHtml(note)}</div>`
+        : '';
       return `<tr>
-        <td><b>${escHtml(p.symbol)}</b></td>
+        <td><b>${escHtml(p.symbol)}</b>${noteLine}</td>
         <td>$${fmt(p.price)}</td>
         <td class="${chgClass}">${chgSign}${chg.toFixed(2)}%</td>
         <td class="neutral">${fmtTime(p.updatedAt)}</td>

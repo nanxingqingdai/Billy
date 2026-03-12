@@ -11,6 +11,12 @@ export const config = {
     .map(k => k.trim())
     .filter(Boolean),
 
+  // Google AI (Gemini)
+  googleAiApiKey: process.env['GOOGLE_AI_API_KEY'] ?? '',
+
+  // Kimi (Moonshot AI) — OpenAI-compatible API
+  kimiApiKey: process.env['KIMI_API_KEY'] ?? '',
+
   // Dashboard
   dashboardPort: Number(process.env['DASHBOARD_PORT'] ?? 3000),
 

@@ -10,6 +10,7 @@ import { notifyStartup, isTelegramConfigured } from './services/telegramNotifier
 import { getActiveTokens } from './config/watchlist';
 import { startDailySummaryScheduler } from './services/dailySummary';
 import { isGeminiConfigured } from './services/gemini';
+import { isKimiConfigured } from './services/kimi';
 
 async function main(): Promise<void> {
   log('INFO', '========================================');
@@ -55,6 +56,13 @@ async function main(): Promise<void> {
     startDailySummaryScheduler();
   } else {
     log('WARN', 'Gemini AI: GOOGLE_AI_API_KEY not set — AI features disabled');
+  }
+
+  // Kimi AI
+  if (isKimiConfigured()) {
+    log('INFO', 'Kimi AI: configured ✅ (per-scan commentary, signal second opinion)');
+  } else {
+    log('WARN', 'Kimi AI: KIMI_API_KEY not set — Kimi features disabled');
   }
 
   // Start monitor loop
