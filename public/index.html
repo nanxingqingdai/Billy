@@ -504,6 +504,58 @@ const state = {
   lastCycle: null,
 };
 
+// ── localStorage 持久化 ────────────────────────────────────────────────────
+const STORAGE_KEY = 'billy_state_v1';
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      positions:   state.positions,
+      prices:      state.prices,
+      trades:      state.trades,
+      signals:     state.signals,
+      tradesCount: state.tradesCount,
+      lastCycle:   state.lastCycle ? state.lastCycle.toISOString() : null,
+    }));
+  } catch (e) { /* quota error — ignore */ }
+}
+
+function restoreState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.positions)              state.positions   = s.positions;
+    if (s.prices)                 state.prices      = s.prices;
+    if (Array.isArray(s.trades))  state.trades      = s.trades;
+    if (s.signals)                state.signals     = s.signals;
+    if (s.tradesCount)            state.tradesCount = s.tradesCount;
+    if (s.lastCycle)              state.lastCycle   = new Date(s.lastCycle);
+    // Restore Date objects in prices
+    for (const k of Object.keys(state.prices)) {
+      if (state.prices[k].updatedAt) state.prices[k].updatedAt = new Date(state.prices[k].updatedAt);
+    }
+    // Restore Date objects in trades
+    for (const t of state.trades) {
+      if (t.time) t.time = new Date(t.time);
+    }
+  } catch (e) { /* corrupt data — ignore */ }
+}
+
+// ── 初始化：恢复持久化数据并渲染 ──────────────────────────────────────────
+restoreState();
+(function initFromStorage() {
+  renderPositions();
+  renderPrices();
+  renderTradesAll();
+  document.getElementById('stat-signals').textContent   = state.signals;
+  document.getElementById('stat-trades').textContent    = state.tradesCount;
+  document.getElementById('stat-positions').textContent = Object.keys(state.positions).length;
+  document.getElementById('pos-count').textContent      = Object.keys(state.positions).length;
+  document.getElementById('trade-count').textContent    = state.trades.length;
+  if (state.lastCycle) document.getElementById('stat-cycle').textContent = fmtTime(state.lastCycle);
+})();
+
 // ── Socket events ──────────────────────────────────────────────────────────
 
 socket.on('connect', () => appendLog('INFO', '控制台已连接'));
@@ -523,6 +575,7 @@ socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
     document.getElementById('stat-cycle').textContent = fmtTime(state.lastCycle);
     document.getElementById('stat-positions').textContent = positionCount;
     document.getElementById('pos-count').textContent = positionCount;
+    saveState();
   }
   appendLog('INFO', `扫描${phase === 'complete' ? '完成' : '开始'} — ${tokenCount} 个代币`);
 });
@@ -530,6 +583,7 @@ socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
 socket.on('bot:price', ({ symbol, mint, price, change24h }) => {
   state.prices[mint] = { symbol, price, change24h, updatedAt: new Date() };
   renderPrices();
+  saveState();
 });
 
 socket.on('bot:signal', ({ symbol, mint, price }) => {
@@ -537,6 +591,7 @@ socket.on('bot:signal', ({ symbol, mint, price }) => {
   document.getElementById('stat-signals').textContent = state.signals;
   appendLog('WARN', `⚡ 买入信号：${symbol} @ $${fmt(price)}`);
   addTradeRow({ time: new Date(), type: 'signal', symbol, price, usdtAmount: 0, txid: '', dryRun: false });
+  saveState();
 });
 
 socket.on('bot:trade', (t) => {
@@ -544,6 +599,7 @@ socket.on('bot:trade', (t) => {
   document.getElementById('stat-trades').textContent = state.tradesCount;
   addTradeRow({ ...t, time: new Date() });
   appendLog('INFO', `${t.type === 'buy' ? '买入' : '卖出'} ${t.symbol} @ $${fmt(t.price)}${t.dryRun ? ' [模拟]' : ''}`);
+  saveState();
 });
 
 socket.on('bot:position', ({ action, symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct }) => {
@@ -555,6 +611,7 @@ socket.on('bot:position', ({ action, symbol, mint, entryPrice, currentPrice, usd
   renderPositions();
   document.getElementById('stat-positions').textContent = Object.keys(state.positions).length;
   document.getElementById('pos-count').textContent = Object.keys(state.positions).length;
+  saveState();
 });
 
 socket.on('bot:log', ({ level, message }) => appendLog(level, message));
@@ -651,6 +708,32 @@ function addTradeRow(t) {
     <td>${amtStr}</td>
     <td>${txLink}</td>`;
   tbody.insertBefore(tr, tbody.firstChild);
+  document.getElementById('trade-count').textContent = state.trades.length;
+}
+
+function renderTradesAll() {
+  if (state.trades.length === 0) return;
+  const tbody = document.getElementById('trades-table');
+  tbody.innerHTML = '';
+  for (const t of state.trades) {
+    const tag = t.type === 'buy'  ? `<span class="tag tag-buy">买入</span>` :
+                t.type === 'sell' ? `<span class="tag tag-sell">卖出</span>` :
+                                    `<span class="tag tag-signal">信号</span>`;
+    const dryTag = t.dryRun ? ` <span class="tag tag-dry">模拟</span>` : '';
+    const txLink = t.txid && t.txid !== 'dry-run' && t.txid !== ''
+      ? `<a href="https://solscan.io/tx/${t.txid}" target="_blank" style="color:var(--blue)">${t.txid.slice(0,8)}…</a>`
+      : `<span class="neutral">—</span>`;
+    const amtStr = t.usdtAmount > 0 ? `$${t.usdtAmount.toFixed(2)}` : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="neutral">${fmtTime(t.time)}</td>
+      <td>${tag}${dryTag}</td>
+      <td><b>${t.symbol}</b></td>
+      <td>$${fmt(t.price)}</td>
+      <td>${amtStr}</td>
+      <td>${txLink}</td>`;
+    tbody.appendChild(tr);
+  }
   document.getElementById('trade-count').textContent = state.trades.length;
 }
 
