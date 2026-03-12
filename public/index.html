@@ -505,7 +505,7 @@ const state = {
 };
 
 // ── localStorage 持久化 ────────────────────────────────────────────────────
-const STORAGE_KEY = 'billy_state_v1';
+const STORAGE_KEY = 'billy_state_v2';
 
 function saveState() {
   try {
@@ -545,15 +545,19 @@ function restoreState() {
 // ── 初始化：恢复持久化数据并渲染 ──────────────────────────────────────────
 restoreState();
 (function initFromStorage() {
-  renderPositions();
-  renderPrices();
-  renderTradesAll();
-  document.getElementById('stat-signals').textContent   = state.signals;
-  document.getElementById('stat-trades').textContent    = state.tradesCount;
-  document.getElementById('stat-positions').textContent = Object.keys(state.positions).length;
-  document.getElementById('pos-count').textContent      = Object.keys(state.positions).length;
-  document.getElementById('trade-count').textContent    = state.trades.length;
-  if (state.lastCycle) document.getElementById('stat-cycle').textContent = fmtTime(state.lastCycle);
+  try {
+    renderPositions();
+    renderPrices();
+    renderTradesAll();
+    document.getElementById('stat-signals').textContent   = state.signals;
+    document.getElementById('stat-trades').textContent    = state.tradesCount;
+    document.getElementById('stat-positions').textContent = Object.keys(state.positions).length;
+    document.getElementById('pos-count').textContent      = Object.keys(state.positions).length;
+    document.getElementById('trade-count').textContent    = state.trades.length;
+    if (state.lastCycle) document.getElementById('stat-cycle').textContent = fmtTime(state.lastCycle);
+  } catch (e) {
+    console.warn('[Billy] initFromStorage error:', e);
+  }
 })();
 
 // ── Socket events ──────────────────────────────────────────────────────────
@@ -581,7 +585,7 @@ socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
 });
 
 socket.on('bot:price', ({ symbol, mint, price, change24h }) => {
-  state.prices[mint] = { symbol, price, change24h, updatedAt: new Date() };
+  state.prices[mint] = { symbol, price, change24h: change24h ?? 0, updatedAt: new Date() };
   renderPrices();
   saveState();
 });
@@ -670,16 +674,21 @@ function renderPrices() {
   const tbody = document.getElementById('prices-table');
   const entries = Object.values(state.prices);
   if (entries.length === 0) return;
-  tbody.innerHTML = entries.map(p => {
-    const chgClass = p.change24h >= 0 ? 'up' : 'down';
-    const chgSign  = p.change24h >= 0 ? '+' : '';
-    return `<tr>
-      <td><b>${p.symbol}</b></td>
-      <td>$${fmt(p.price)}</td>
-      <td class="${chgClass}">${chgSign}${p.change24h.toFixed(2)}%</td>
-      <td class="neutral">${fmtTime(p.updatedAt)}</td>
-    </tr>`;
-  }).join('');
+  try {
+    tbody.innerHTML = entries.map(p => {
+      const chg      = p.change24h ?? 0;
+      const chgClass = chg >= 0 ? 'up' : 'down';
+      const chgSign  = chg >= 0 ? '+' : '';
+      return `<tr>
+        <td><b>${escHtml(p.symbol)}</b></td>
+        <td>$${fmt(p.price)}</td>
+        <td class="${chgClass}">${chgSign}${chg.toFixed(2)}%</td>
+        <td class="neutral">${fmtTime(p.updatedAt)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.warn('[Billy] renderPrices error:', e);
+  }
 }
 
 const MAX_TRADES = 100;
