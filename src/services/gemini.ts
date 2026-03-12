@@ -25,7 +25,7 @@ async function askGemini(prompt: string, timeoutMs = 15_000): Promise<string> {
   const client = getClient();
   if (!client) throw new Error('Gemini not configured (GOOGLE_AI_API_KEY missing)');
 
-  const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const result = await Promise.race([
     model.generateContent(prompt),
