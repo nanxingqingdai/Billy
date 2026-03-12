@@ -293,10 +293,10 @@
 <header>
   <div class="logo">⚡ BILLY BOT</div>
   <div class="header-right">
-    <span id="status-badge" class="badge offline"><span class="badge-dot"></span>Offline</span>
+    <span id="status-badge" class="badge offline"><span class="badge-dot"></span>离线</span>
     <span id="uptime" class="uptime">--</span>
-    <button class="settings-btn" onclick="openWatchlist()" title="Watchlist">📋 Watchlist</button>
-    <button class="settings-btn" onclick="openSettings()" title="Risk Config">⚙ Risk Config</button>
+    <button class="settings-btn" onclick="openWatchlist()" title="监控列表">📋 监控列表</button>
+    <button class="settings-btn" onclick="openSettings()" title="风控配置">⚙ 风控配置</button>
   </div>
 </header>
 
@@ -304,45 +304,45 @@
 <div id="wl-overlay" onclick="maybeCloseWatchlist(event)">
   <div id="wl-panel">
     <div class="settings-header">
-      <span>📋 Watchlist</span>
+      <span>📋 监控列表</span>
       <button class="settings-close" onclick="closeWatchlist()">✕</button>
     </div>
     <div class="wl-body" id="wl-body">
-      <div style="color:var(--muted);text-align:center;padding:24px">Connecting…</div>
+      <div style="color:var(--muted);text-align:center;padding:24px">连接中…</div>
     </div>
     <div class="wl-footer">
       <div id="wl-status"></div>
       <!-- Add token form -->
       <div id="wl-add-form">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">New Token</div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">添加代币</div>
         <div class="wl-row">
-          <div class="wl-field"><label>Symbol</label><input id="wl-new-symbol" placeholder="e.g. WIF" /></div>
-          <div class="wl-field"><label>Name</label><input id="wl-new-name" placeholder="e.g. dogwifhat" /></div>
+          <div class="wl-field"><label>代币符号</label><input id="wl-new-symbol" placeholder="如 WIF" /></div>
+          <div class="wl-field"><label>名称</label><input id="wl-new-name" placeholder="如 dogwifhat" /></div>
         </div>
-        <div class="wl-field"><label>Mint Address</label><input id="wl-new-mint" placeholder="Base58 mint address" /></div>
+        <div class="wl-field"><label>合约地址</label><input id="wl-new-mint" placeholder="Base58 合约地址" /></div>
         <div class="wl-row">
-          <div class="wl-field"><label>Max Buy (USDT)</label><input id="wl-new-maxbuy" type="number" value="50" min="1" /></div>
-          <div class="wl-field"><label>Slippage (bps)</label><input id="wl-new-slippage" type="number" value="200" min="10" /></div>
+          <div class="wl-field"><label>最大买入 (USDT)</label><input id="wl-new-maxbuy" type="number" value="50" min="1" /></div>
+          <div class="wl-field"><label>滑点 (bps)</label><input id="wl-new-slippage" type="number" value="200" min="10" /></div>
         </div>
         <div class="wl-row">
-          <div class="wl-field"><label>Interval</label>
+          <div class="wl-field"><label>K线周期</label>
             <select id="wl-new-interval">
               <option value="1H">1H</option><option value="4H">4H</option>
               <option value="1D">1D</option><option value="15m">15m</option>
             </select>
           </div>
-          <div class="wl-field"><label>Lookback</label><input id="wl-new-lookback" type="number" value="6" min="2" /></div>
+          <div class="wl-field"><label>回看根数</label><input id="wl-new-lookback" type="number" value="6" min="2" /></div>
         </div>
         <div class="wl-row">
-          <div class="wl-field"><label>Max Amplitude %</label><input id="wl-new-amp" type="number" value="4" step="0.5" /></div>
-          <div class="wl-field"><label>Vol Contraction</label><input id="wl-new-vcr" type="number" value="0.65" step="0.05" /></div>
+          <div class="wl-field"><label>最大振幅 %</label><input id="wl-new-amp" type="number" value="4" step="0.5" /></div>
+          <div class="wl-field"><label>缩量比例</label><input id="wl-new-vcr" type="number" value="0.65" step="0.05" /></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button id="wl-add-cancel" onclick="hideAddForm()">Cancel</button>
-          <button id="wl-add-submit" onclick="submitAddToken()">Add Token</button>
+          <button id="wl-add-cancel" onclick="hideAddForm()">取消</button>
+          <button id="wl-add-submit" onclick="submitAddToken()">添加</button>
         </div>
       </div>
-      <button id="wl-add-btn" onclick="showAddForm()">+ Add Token</button>
+      <button id="wl-add-btn" onclick="showAddForm()">+ 添加代币</button>
     </div>
   </div>
 </div>
@@ -351,17 +351,17 @@
 <div id="settings-overlay" onclick="maybeCloseSettings(event)">
   <div id="settings-panel">
     <div class="settings-header">
-      <span>⚙ Risk Configuration</span>
+      <span>⚙ 风控配置</span>
       <button class="settings-close" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-body" id="settings-body">
-      <div style="color:var(--muted);text-align:center;padding:24px">Connecting…</div>
+      <div style="color:var(--muted);text-align:center;padding:24px">连接中…</div>
     </div>
     <div class="settings-footer">
       <div id="settings-status"></div>
       <div class="btn-row">
-        <button id="settings-reset" onclick="resetSettings()">Reset</button>
-        <button id="settings-save" onclick="saveSettings()" disabled>Save Changes</button>
+        <button id="settings-reset" onclick="resetSettings()">重置</button>
+        <button id="settings-save" onclick="saveSettings()" disabled>保存</button>
       </div>
     </div>
   </div>
@@ -372,27 +372,27 @@
   <!-- Stat cards -->
   <div class="stats">
     <div class="stat">
-      <div class="stat-label">Open Positions</div>
+      <div class="stat-label">持仓数</div>
       <div class="stat-value" id="stat-positions">0</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Signals Today</div>
+      <div class="stat-label">今日信号</div>
       <div class="stat-value" id="stat-signals">0</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Trades Today</div>
+      <div class="stat-label">今日交易</div>
       <div class="stat-value" id="stat-trades">0</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Last Cycle</div>
+      <div class="stat-label">上次扫描</div>
       <div class="stat-value" id="stat-cycle" style="font-size:13px;padding-top:4px">—</div>
     </div>
     <div class="stat">
-      <div class="stat-label">USDT Balance</div>
+      <div class="stat-label">USDT 余额</div>
       <div class="stat-value" id="stat-usdt" style="font-size:16px;padding-top:2px">—</div>
     </div>
     <div class="stat" id="stat-sol-card">
-      <div class="stat-label">SOL Balance</div>
+      <div class="stat-label">SOL 余额</div>
       <div class="stat-value" id="stat-sol" style="font-size:16px;padding-top:2px">—</div>
     </div>
   </div>
@@ -400,22 +400,22 @@
   <!-- Positions -->
   <div class="card">
     <div class="card-header">
-      <span>Active Positions</span>
+      <span>当前持仓</span>
       <span id="pos-count" class="neutral">0</span>
     </div>
     <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Token</th>
-            <th>Entry</th>
-            <th>Current</th>
-            <th>P&L</th>
-            <th>Spent</th>
+            <th>代币</th>
+            <th>开仓价</th>
+            <th>现价</th>
+            <th>盈亏</th>
+            <th>投入</th>
           </tr>
         </thead>
         <tbody id="positions-table">
-          <tr><td colspan="5" class="no-data">No open positions</td></tr>
+          <tr><td colspan="5" class="no-data">暂无持仓</td></tr>
         </tbody>
       </table>
     </div>
@@ -424,20 +424,20 @@
   <!-- Prices -->
   <div class="card">
     <div class="card-header">
-      <span>Watchlist Prices</span>
+      <span>监控价格</span>
     </div>
     <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Token</th>
-            <th>Price</th>
+            <th>代币</th>
+            <th>价格</th>
             <th>24h</th>
-            <th>Updated</th>
+            <th>更新时间</th>
           </tr>
         </thead>
         <tbody id="prices-table">
-          <tr><td colspan="4" class="no-data">Waiting for first cycle...</td></tr>
+          <tr><td colspan="4" class="no-data">等待首次扫描…</td></tr>
         </tbody>
       </table>
     </div>
@@ -446,23 +446,23 @@
   <!-- Trade history -->
   <div class="card">
     <div class="card-header">
-      <span>Trade / Signal Log</span>
+      <span>交易 / 信号记录</span>
       <span id="trade-count" class="neutral">0</span>
     </div>
     <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Token</th>
-            <th>Price</th>
-            <th>Amount</th>
-            <th>Tx</th>
+            <th>时间</th>
+            <th>类型</th>
+            <th>代币</th>
+            <th>价格</th>
+            <th>金额</th>
+            <th>交易</th>
           </tr>
         </thead>
         <tbody id="trades-table">
-          <tr><td colspan="6" class="no-data">No trades yet</td></tr>
+          <tr><td colspan="6" class="no-data">暂无交易记录</td></tr>
         </tbody>
       </table>
     </div>
@@ -471,9 +471,9 @@
   <!-- Live log -->
   <div class="card">
     <div class="card-header">
-      <span>Live Log</span>
+      <span>实时日志</span>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted)">
-        <input type="checkbox" id="autoscroll" checked style="cursor:pointer"> Auto-scroll
+        <input type="checkbox" id="autoscroll" checked style="cursor:pointer"> 自动滚动
       </label>
     </div>
     <div class="card-body" id="log-scroll">
@@ -486,7 +486,7 @@
 <!-- Error banner -->
 <div id="error-banner">
   <span class="err-close" onclick="document.getElementById('error-banner').style.display='none'">✕</span>
-  <div class="err-title">⚠ Bot Error</div>
+  <div class="err-title">⚠ 机器人错误</div>
   <div class="err-msg" id="error-msg"></div>
 </div>
 
@@ -506,15 +506,15 @@ const state = {
 
 // ── Socket events ──────────────────────────────────────────────────────────
 
-socket.on('connect', () => appendLog('INFO', 'Dashboard connected'));
+socket.on('connect', () => appendLog('INFO', '控制台已连接'));
 socket.on('disconnect', () => {
   setStatusBadge('offline');
-  appendLog('WARN', 'Dashboard disconnected');
+  appendLog('WARN', '控制台已断开');
 });
 
 socket.on('bot:status', ({ running, dryRun, uptimeSec }) => {
   setStatusBadge(running ? (dryRun ? 'dryrun' : 'running') : 'offline');
-  document.getElementById('uptime').textContent = 'Uptime ' + fmtUptime(uptimeSec);
+  document.getElementById('uptime').textContent = '运行时长 ' + fmtUptime(uptimeSec);
 });
 
 socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
@@ -524,7 +524,7 @@ socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
     document.getElementById('stat-positions').textContent = positionCount;
     document.getElementById('pos-count').textContent = positionCount;
   }
-  appendLog('INFO', `Cycle ${phase} — ${tokenCount} tokens`);
+  appendLog('INFO', `扫描${phase === 'complete' ? '完成' : '开始'} — ${tokenCount} 个代币`);
 });
 
 socket.on('bot:price', ({ symbol, mint, price, change24h }) => {
@@ -535,7 +535,7 @@ socket.on('bot:price', ({ symbol, mint, price, change24h }) => {
 socket.on('bot:signal', ({ symbol, mint, price }) => {
   state.signals++;
   document.getElementById('stat-signals').textContent = state.signals;
-  appendLog('WARN', `⚡ BUY SIGNAL: ${symbol} @ $${fmt(price)}`);
+  appendLog('WARN', `⚡ 买入信号：${symbol} @ $${fmt(price)}`);
   addTradeRow({ time: new Date(), type: 'signal', symbol, price, usdtAmount: 0, txid: '', dryRun: false });
 });
 
@@ -543,7 +543,7 @@ socket.on('bot:trade', (t) => {
   state.tradesCount++;
   document.getElementById('stat-trades').textContent = state.tradesCount;
   addTradeRow({ ...t, time: new Date() });
-  appendLog('INFO', `${t.type.toUpperCase()} ${t.symbol} @ $${fmt(t.price)}${t.dryRun ? ' [DRY]' : ''}`);
+  appendLog('INFO', `${t.type === 'buy' ? '买入' : '卖出'} ${t.symbol} @ $${fmt(t.price)}${t.dryRun ? ' [模拟]' : ''}`);
 });
 
 socket.on('bot:position', ({ action, symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct }) => {
@@ -567,17 +567,17 @@ socket.on('bot:balance', ({ solBalance, usdtBalance }) => {
   card.classList.remove('sol-warn', 'sol-crit');
   if (solBalance < 0.05) {
     card.classList.add('sol-crit');
-    appendLog('ERROR', `⛽ SOL critically low: ${solBalance.toFixed(4)} SOL — trading blocked`);
+    appendLog('ERROR', `⛽ SOL 严重不足：${solBalance.toFixed(4)} SOL — 交易已暂停`);
   } else if (solBalance < 0.1) {
     card.classList.add('sol-warn');
-    appendLog('WARN', `⛽ SOL low: ${solBalance.toFixed(4)} SOL — please top up`);
+    appendLog('WARN', `⛽ SOL 余额偏低：${solBalance.toFixed(4)} SOL — 请及时充值`);
   }
 });
 
 socket.on('bot:risk', ({ rule, symbol, detail, blocked }) => {
   if (blocked) {
     const label = symbol ? `[${symbol}]` : '';
-    appendLog('WARN', `⛔ Risk ${rule} ${label}: ${detail}`);
+    appendLog('WARN', `⛔ 风控 ${rule} ${label}: ${detail}`);
   }
 });
 
@@ -593,7 +593,7 @@ function renderPositions() {
   const tbody = document.getElementById('positions-table');
   const entries = Object.entries(state.positions);
   if (entries.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No open positions</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">暂无持仓</td></tr>';
     return;
   }
   tbody.innerHTML = entries.map(([, p]) => {
@@ -630,10 +630,10 @@ function addTradeRow(t) {
   state.trades.unshift(t);
   if (state.trades.length > MAX_TRADES) state.trades.pop();
   const tbody = document.getElementById('trades-table');
-  const tag = t.type === 'buy'    ? `<span class="tag tag-buy">BUY</span>` :
-              t.type === 'sell'   ? `<span class="tag tag-sell">SELL</span>` :
-                                    `<span class="tag tag-signal">SIGNAL</span>`;
-  const dryTag = t.dryRun ? ` <span class="tag tag-dry">DRY</span>` : '';
+  const tag = t.type === 'buy'    ? `<span class="tag tag-buy">买入</span>` :
+              t.type === 'sell'   ? `<span class="tag tag-sell">卖出</span>` :
+                                    `<span class="tag tag-signal">信号</span>`;
+  const dryTag = t.dryRun ? ` <span class="tag tag-dry">模拟</span>` : '';
   const txLink = t.txid && t.txid !== 'dry-run' && t.txid !== ''
     ? `<a href="https://solscan.io/tx/${t.txid}" target="_blank" style="color:var(--blue)">${t.txid.slice(0,8)}…</a>`
     : `<span class="neutral">—</span>`;
@@ -681,7 +681,7 @@ function setStatusBadge(mode) {
   const el = document.getElementById('status-badge');
   el.className = `badge ${mode}`;
   el.innerHTML = `<span class="badge-dot"></span>${
-    mode === 'running' ? 'Live' : mode === 'dryrun' ? 'Dry Run' : 'Offline'
+    mode === 'running' ? '运行中' : mode === 'dryrun' ? '模拟运行' : '离线'
   }`;
 }
 
@@ -721,7 +721,7 @@ socket.on('bot:watchlist', ({ tokens, errors }) => {
   if (errors && errors.length > 0) {
     setWlStatus('error', '✗ ' + errors.join(' · '));
   } else if (document.getElementById('wl-overlay').classList.contains('open')) {
-    setWlStatus('ok', '✓ Saved');
+    setWlStatus('ok', '✓ 已保存');
     setTimeout(() => setWlStatus('', ''), 2500);
   }
 });
@@ -729,7 +729,7 @@ socket.on('bot:watchlist', ({ tokens, errors }) => {
 function renderWatchlist() {
   const body = document.getElementById('wl-body');
   if (_watchlist.length === 0) {
-    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No tokens configured</div>';
+    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">暂无代币</div>';
     return;
   }
   body.innerHTML = _watchlist.map((t) => buildTokenCard(t)).join('');
@@ -755,36 +755,36 @@ function buildTokenCard(t) {
         <b>${escHtml(t.symbol)}</b><span class="wl-name">${escHtml(t.name)}</span>
         <div class="wl-mint">${shortMint}</div>
       </div>
-      <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="Remove">✕</button>
+      <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="移除">✕</button>
     </div>
     <div class="wl-card-body" id="wl-body-${t.mint}">
       <div class="wl-row">
-        <div class="wl-field"><label>Max Buy (USDT)</label>
+        <div class="wl-field"><label>最大买入 (USDT)</label>
           <input type="number" id="wf-maxbuy-${t.mint}" value="${t.maxBuyUsdt}" min="1" step="1" /></div>
-        <div class="wl-field"><label>Slippage (bps)</label>
+        <div class="wl-field"><label>滑点 (bps)</label>
           <input type="number" id="wf-slip-${t.mint}" value="${t.slippageBps}" min="10" step="10" /></div>
       </div>
       <div class="wl-row">
-        <div class="wl-field"><label>Interval</label>
+        <div class="wl-field"><label>K线周期</label>
           <select id="wf-int-${t.mint}">
             ${['15m','1H','4H','1D'].map(v => `<option value="${v}"${t.signal.interval===v?' selected':''}>${v}</option>`).join('')}
           </select></div>
-        <div class="wl-field"><label>Lookback</label>
+        <div class="wl-field"><label>回看根数</label>
           <input type="number" id="wf-look-${t.mint}" value="${t.signal.lookback}" min="2" step="1" /></div>
       </div>
       <div class="wl-row">
-        <div class="wl-field"><label>Max Amplitude %</label>
+        <div class="wl-field"><label>最大振幅 %</label>
           <input type="number" id="wf-amp-${t.mint}" value="${t.signal.maxAmplitudePct}" step="0.5" /></div>
-        <div class="wl-field"><label>Vol Contraction</label>
+        <div class="wl-field"><label>缩量比例</label>
           <input type="number" id="wf-vcr-${t.mint}" value="${t.signal.volumeContractionRatio}" step="0.05" /></div>
       </div>
-      <div class="wl-batches-label">Sell Batches</div>
+      <div class="wl-batches-label">分批卖出</div>
       <table class="wl-batches-table">
-        <thead><tr><th>Price ×</th><th>Portion</th><th></th></tr></thead>
+        <thead><tr><th>目标价 ×</th><th>仓位比</th><th></th></tr></thead>
         <tbody id="batches-${t.mint}">${batchRows}</tbody>
       </table>
-      <button class="batch-add-btn" onclick="addBatch('${t.mint}')">+ Add Batch</button>
-      <button class="wl-save-btn" onclick="saveToken('${t.mint}')">Save Changes</button>
+      <button class="batch-add-btn" onclick="addBatch('${t.mint}')">+ 添加批次</button>
+      <button class="wl-save-btn" onclick="saveToken('${t.mint}')">保存</button>
     </div>
   </div>`;
 }
@@ -847,7 +847,7 @@ function deleteBatch(mint, idx) {
 }
 
 function confirmRemove(mint, symbol) {
-  if (!confirm(`Remove ${symbol} from watchlist?`)) return;
+  if (!confirm(`确认从监控列表移除 ${symbol}？`)) return;
   socket.emit('watchlist:remove', { mint });
 }
 
@@ -921,7 +921,7 @@ socket.on('bot:config', ({ config: cfg, errors }) => {
   if (errors && errors.length > 0) {
     setSettingsStatus('error', '✗ ' + errors.join(' · '));
   } else if (document.getElementById('settings-overlay').classList.contains('open')) {
-    setSettingsStatus('ok', '✓ Saved');
+    setSettingsStatus('ok', '✓ 已保存');
     setTimeout(() => setSettingsStatus('', ''), 2500);
   }
   document.getElementById('settings-save').disabled = false;
@@ -955,7 +955,7 @@ function saveSettings() {
     if (el) updates[f.key] = Number(el.value);
   }
   document.getElementById('settings-save').disabled = true;
-  setSettingsStatus('', 'Saving…');
+  setSettingsStatus('', '保存中…');
   socket.emit('config:update', updates);
 }
 
