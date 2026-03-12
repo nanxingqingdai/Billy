@@ -18,6 +18,20 @@ import { notifyBuySignal } from './services/telegramNotifier';
 const positions = loadPositions();
 const startedAt = Date.now();
 
+// ─── Signal cooldown (prevent repeated TG notifications for the same token) ─
+
+const SIGNAL_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
+const _lastSignalTime = new Map<string, number>(); // mint → timestamp
+
+function isSignalOnCooldown(mint: string): boolean {
+  const last = _lastSignalTime.get(mint);
+  return last !== undefined && Date.now() - last < SIGNAL_COOLDOWN_MS;
+}
+
+function markSignalSent(mint: string): void {
+  _lastSignalTime.set(mint, Date.now());
+}
+
 // ─── Single token scan ─────────────────────────────────────────────────────
 
 async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance: number): Promise<void> {
@@ -78,6 +92,13 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     log('INFO', `[${symbol}] *** BUY SIGNAL detected ***`);
     emit('bot:signal', { symbol, mint, price: currentPrice });
 
+    // ── 冷却期检查：4 小时内同一代币不重复通知 ───────────────────────────
+    if (isSignalOnCooldown(mint)) {
+      const remainMin = Math.ceil((SIGNAL_COOLDOWN_MS - (Date.now() - (_lastSignalTime.get(mint) ?? 0))) / 60_000);
+      log('INFO', `[${symbol}] 信号冷却中，距下次通知还有 ${remainMin} 分钟`);
+      return;
+    }
+
     // ── Pre-buy risk checks ───────────────────────────────────────────────
     const buyAmount = Math.min(maxBuyUsdt, config.maxBuyUsdt);
     const rawAmount = Math.floor(buyAmount * Math.pow(10, USDT_DECIMALS));
@@ -98,6 +119,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       priceImpactPct:  parseFloat(quote.priceImpactPct),
       buyAmountUsdt:   buyAmount,
     });
+    markSignalSent(mint); // 开始 4 小时冷却
 
     if (!riskResult.ok) {
       log('WARN', `[${symbol}] Buy blocked by risk (${riskResult.rule}): ${riskResult.detail}`);
