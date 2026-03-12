@@ -8,6 +8,8 @@ import { startMonitor } from './monitor';
 import { startMoonshotListener } from './services/moonshotListener';
 import { notifyStartup, isTelegramConfigured } from './services/telegramNotifier';
 import { getActiveTokens } from './config/watchlist';
+import { startDailySummaryScheduler } from './services/dailySummary';
+import { isGeminiConfigured } from './services/gemini';
 
 async function main(): Promise<void> {
   log('INFO', '========================================');
@@ -45,6 +47,14 @@ async function main(): Promise<void> {
     log('INFO', 'Telegram notifier: configured ✅');
   } else {
     log('WARN', 'Telegram notifier: TG_BOT_TOKEN / TG_CHAT_ID not set — notifications disabled');
+  }
+
+  // Gemini AI
+  if (isGeminiConfigured()) {
+    log('INFO', 'Gemini AI: configured ✅ (signal analysis, token screening, daily summary, Q&A)');
+    startDailySummaryScheduler();
+  } else {
+    log('WARN', 'Gemini AI: GOOGLE_AI_API_KEY not set — AI features disabled');
   }
 
   // Start monitor loop

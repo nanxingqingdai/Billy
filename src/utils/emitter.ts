@@ -16,6 +16,7 @@ export interface BotEvents {
   'bot:config':   { config: Record<string, number>; errors?: string[] };
   'bot:balance':  { solBalance: number; usdtBalance: number };
   'bot:watchlist': { tokens: WatchlistToken[]; errors?: string[] };
+  'bot:ai-reply':  { answer: string; question: string; timestamp: string };
 }
 
 // ─── Singleton ──────────────────────────────────────────────────────────────

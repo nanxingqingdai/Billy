@@ -10,12 +10,18 @@ import axios from 'axios';
 import { log } from '../utils/logger';
 import { getDexScreenerSummary } from './dexscreener';
 import type { TokenPath } from './birdeye';
+import { isGeminiConfigured, generateSignalAnalysis } from './gemini';
 
 const BOT_TOKEN = process.env.TG_BOT_TOKEN ?? '';
 const CHAT_ID   = process.env.TG_CHAT_ID   ?? '';
 
 export function isTelegramConfigured(): boolean {
   return Boolean(BOT_TOKEN && CHAT_ID);
+}
+
+/** Public alias used by dailySummary.ts */
+export async function sendTelegramMessage(text: string): Promise<void> {
+  return sendMessage(text);
 }
 
 async function sendMessage(text: string): Promise<void> {
@@ -96,6 +102,7 @@ export interface BuySignalParams {
   mint:               string;
   athMarketCapUsd:    number;
   drawdownPct:        number;
+  ageDays:            number;
   lowAmpBars:         number;
   lowVolBars:         number;
   volThresholdUsd:    number;
@@ -151,6 +158,22 @@ export async function notifyBuySignal(p: BuySignalParams): Promise<void> {
   const dexUrl  = `https://dexscreener.com/solana/${p.mint}`;
   const birdUrl = `https://birdeye.so/token/${p.mint}?chain=solana`;
 
+  // ── Gemini AI 信号分析 ────────────────────────────────────────────────
+  let aiAnalysis = '';
+  if (isGeminiConfigured()) {
+    aiAnalysis = await generateSignalAnalysis({
+      symbol:          p.symbol,
+      athMarketCapUsd: p.athMarketCapUsd,
+      drawdownPct:     p.drawdownPct,
+      ageDays:         p.ageDays,
+      lowAmpBars:      p.lowAmpBars,
+      lowVolBars:      p.lowVolBars,
+      priceImpactPct:  p.priceImpactPct,
+      marketCapStr,
+      change24hStr,
+    });
+  }
+
   const text = [
     `🚨 <b>买入信号 — ${p.symbol}</b>`,
     ``,
@@ -164,11 +187,12 @@ export async function notifyBuySignal(p: BuySignalParams): Promise<void> {
     `  📅 代币年龄: ${ageDaysStr} 天`,
     ``,
     conclusion,
+    aiAnalysis ? `\n🤖 <b>AI 分析</b>\n${aiAnalysis}` : '',
     ``,
     `🔗 <a href="${dexUrl}">DexScreener</a>  |  <a href="${birdUrl}">Birdeye</a>`,
     ``,
     `📋 CA: <code>${p.mint}</code>`,
-  ].join('\n');
+  ].filter(s => s !== '').join('\n');
 
   await sendMessage(text);
   log('INFO', `[TG] 买入信号通知已发送: ${p.symbol}`);

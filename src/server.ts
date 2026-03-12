@@ -11,6 +11,8 @@ import { getWatchlist, updateToken, addToken, removeToken, WatchlistToken } from
 import { keypairFromBase58 } from './utils/keypair';
 import { config as appConfig } from './config/env';
 import QRCode from 'qrcode';
+import { isGeminiConfigured, answerQuery } from './services/gemini';
+import { loadPositions } from './utils/positionStore';
 
 const walletAddress = appConfig.walletPrivateKey
   ? keypairFromBase58(appConfig.walletPrivateKey).publicKey.toBase58()
@@ -121,6 +123,41 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
         // Broadcast to all clients so all open tabs stay in sync
         io.emit('bot:config', { config: newCfg });
       }
+    });
+
+    // AI Q&A handler
+    socket.on('ai:query', async ({ question }: { question: string }) => {
+      if (!isGeminiConfigured()) {
+        socket.emit('bot:ai-reply', { answer: 'AI 助手未配置，请在 .env 中设置 GOOGLE_AI_API_KEY。', question, timestamp: new Date().toISOString() });
+        return;
+      }
+
+      // Build context from live bot state
+      const balance    = getLatest('bot:balance');
+      const cycle      = getLatest('bot:cycle');
+      const status     = getLatest('bot:status');
+      const riskCfg    = getRiskConfig();
+      const positions  = loadPositions();
+      const watchlist  = getWatchlist();
+
+      const posLines = positions.size > 0
+        ? Array.from(positions.values()).map(p =>
+            `  - ${p.symbol}: 开仓价 $${p.entryPrice.toFixed(6)}, 花费 $${p.usdtSpent} USDT`
+          ).join('\n')
+        : '  无持仓';
+
+      const context = [
+        `运行状态: ${status?.running ? '运行中' : '停止'} | DryRun: ${status?.dryRun ?? '未知'} | 运行时长: ${Math.floor((status?.uptimeSec ?? 0) / 60)} 分钟`,
+        `SOL余额: ${balance?.solBalance?.toFixed(4) ?? '?'} SOL | USDT余额: $${balance?.usdtBalance?.toFixed(2) ?? '?'}`,
+        `当前持仓 (${positions.size} 个):`,
+        posLines,
+        `监控代币: ${watchlist.map(t => t.symbol).join(', ') || '无'} (${watchlist.length} 个)`,
+        `风控参数: 单笔最大买入 $${riskCfg.maxBuyUsdt} | 止损 ${riskCfg.stopLossPct}% | 最大持仓 ${riskCfg.maxOpenPositions} 个 | 每日最大亏损 $${riskCfg.maxDailyLossUsdt}`,
+        `上次扫描: ${cycle ? `${cycle.tokenCount} 代币, ${cycle.positionCount} 持仓` : '尚未扫描'}`,
+      ].join('\n');
+
+      const answer = await answerQuery(question, context);
+      socket.emit('bot:ai-reply', { answer, question, timestamp: new Date().toISOString() });
     });
 
     socket.on('disconnect', () => {

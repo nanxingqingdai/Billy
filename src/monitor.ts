@@ -12,6 +12,8 @@ import {
 } from './strategies/riskManager';
 import { loadPositions, savePositions, Position } from './utils/positionStore';
 import { notifyBuySignal } from './services/telegramNotifier';
+import { isGeminiConfigured, screenToken } from './services/gemini';
+import { recordDailySignal, recordDailyTrade } from './services/dailySummary';
 
 // ─── Position tracking ─────────────────────────────────────────────────────
 
@@ -134,6 +136,23 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       return;
     }
 
+    // ── Gemini 代币筛查 ───────────────────────────────────────────────────
+    if (isGeminiConfigured()) {
+      const screen = await screenToken({
+        symbol,
+        mint,
+        athMarketCapUsd: pre.athMarketCapUsd,
+        drawdownPct:     pre.drawdownPct,
+        ageDays:         pre.ageDays,
+        path:            pre.path,
+      });
+      if (!screen.pass) {
+        log('INFO', `[${symbol}] Gemini 筛查未通过: ${screen.reason}`);
+        return;
+      }
+      log('INFO', `[${symbol}] Gemini 筛查通过: ${screen.reason}`);
+    }
+
     // ── Pre-buy risk checks ───────────────────────────────────────────────
     const buyAmount = Math.min(maxBuyUsdt, config.maxBuyUsdt);
     const rawAmount = Math.floor(buyAmount * Math.pow(10, USDT_DECIMALS));
@@ -147,6 +166,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       mint,
       athMarketCapUsd: pre.athMarketCapUsd,
       drawdownPct:     pre.drawdownPct,
+      ageDays:         pre.ageDays,
       lowAmpBars:      pre.lowAmpBars,
       lowVolBars:      pre.lowVolBars,
       volThresholdUsd: pre.volThresholdUsd,
@@ -155,6 +175,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       buyAmountUsdt:   buyAmount,
     });
     markSignalSent(mint, pre.path);
+    recordDailySignal(symbol);
 
     if (!riskResult.ok) {
       log('WARN', `[${symbol}] Buy blocked by risk (${riskResult.rule}): ${riskResult.detail}`);
@@ -204,6 +225,7 @@ async function forceClose(position: Position, currentPrice: number, slippageBps:
     const { sellToUsdt } = await import('./services/jupiter');
     const result = await sellToUsdt(mint, sellRaw, slippageBps, false);
     recordLoss(lossUsdt);
+    recordDailyTrade(usdtSpent * pnlPct / 100);
     positions.delete(mint);
     savePositions(positions);
     emit('bot:position', { action: 'close', symbol, mint, entryPrice, currentPrice, usdtSpent, pnlPct });
@@ -251,6 +273,7 @@ async function evaluateSell(position: Position, currentPrice: number, batches: S
       const realized = usdtSpent * batch.portion * batch.priceMultiplier;
       const cost     = usdtSpent * batch.portion;
       if (realized < cost) recordLoss(cost - realized);
+      recordDailyTrade(realized - cost);
       emit('bot:trade', { type: 'sell', symbol, mint, usdtAmount: realized, price: currentPrice, txid: result.txid, dryRun: false, batch: batch.priceMultiplier });
       log('INFO', `[${symbol}] Sold batch ${batch.priceMultiplier}x | tx: ${result.txid}`);
     } catch (err) {
