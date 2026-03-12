@@ -35,14 +35,14 @@ export interface RiskField {
 }
 
 export const RISK_FIELDS: RiskField[] = [
-  { key: 'maxBuyUsdt',        label: 'Max Buy Per Trade',    unit: 'USDT',  min: 1,   max: 10000, step: 1,    description: 'Maximum USDT to spend on a single buy trade' },
-  { key: 'slippageBps',       label: 'Slippage Tolerance',   unit: 'bps',   min: 10,  max: 1000,  step: 10,   description: '100 = 1%, 300 = 3%. Higher = more likely to fill but worse price' },
-  { key: 'stopLossPct',       label: 'Stop Loss',            unit: '%',     min: 1,   max: 95,    step: 0.5,  description: 'Sell entire position if price drops this % below entry' },
-  { key: 'maxOpenPositions',  label: 'Max Open Positions',   unit: '',      min: 1,   max: 20,    step: 1,    description: 'Block new buys when this many positions are already open' },
-  { key: 'maxHoldHours',      label: 'Max Hold Duration',    unit: 'h',     min: 1,   max: 720,   step: 1,    description: 'Force-sell position after this many hours if no target hit' },
-  { key: 'maxDailyLossUsdt',  label: 'Daily Loss Cap',       unit: 'USDT',  min: 1,   max: 100000,step: 10,   description: 'Pause all buying for today if total realised loss exceeds this' },
-  { key: 'minUsdtReserve',    label: 'Min USDT Reserve',     unit: 'USDT',  min: 0,   max: 10000, step: 5,    description: 'Always keep at least this much USDT in wallet — never spend it' },
-  { key: 'maxPriceImpactPct', label: 'Max Price Impact',     unit: '%',     min: 0.1, max: 20,    step: 0.1,  description: 'Reject Jupiter swap quote if price impact exceeds this %' },
+  { key: 'maxBuyUsdt',        label: '单笔最大买入',   unit: 'USDT', min: 1,   max: 10000,  step: 1,   description: '每次买入最多花费的 USDT 金额' },
+  { key: 'slippageBps',       label: '滑点容忍度',     unit: 'bps',  min: 10,  max: 1000,   step: 10,  description: '100 = 1%，300 = 3%。越高越容易成交，但成交价格越差' },
+  { key: 'stopLossPct',       label: '止损比例',       unit: '%',    min: 1,   max: 95,     step: 0.5, description: '价格从开仓价下跌超过此比例时，自动清仓止损' },
+  { key: 'maxOpenPositions',  label: '最大持仓数量',   unit: '个',   min: 1,   max: 20,     step: 1,   description: '同时持有的代币数量上限，超过则暂停新买入' },
+  { key: 'maxHoldHours',      label: '最长持仓时间',   unit: '小时', min: 1,   max: 720,    step: 1,   description: '持仓超过此时长仍未达到目标价，自动强制卖出' },
+  { key: 'maxDailyLossUsdt',  label: '每日最大亏损',   unit: 'USDT', min: 1,   max: 100000, step: 10,  description: '当天累计亏损超过此金额，暂停当日所有买入操作' },
+  { key: 'minUsdtReserve',    label: 'USDT 最低保留',  unit: 'USDT', min: 0,   max: 10000,  step: 5,   description: '钱包中始终保留的 USDT 底仓，不参与任何交易' },
+  { key: 'maxPriceImpactPct', label: '最大价格冲击',   unit: '%',    min: 0.1, max: 20,     step: 0.1, description: 'Jupiter 报价的价格冲击超过此值时，拒绝执行交易' },
 ];
 
 // ─── Persistence ───────────────────────────────────────────────────────────
