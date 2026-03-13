@@ -17,6 +17,7 @@ import { notifyBuySignal } from './services/telegramNotifier';
 import { isGeminiConfigured, screenToken } from './services/gemini';
 import { recordDailySignal, recordDailyTrade } from './services/dailySummary';
 import { isKimiConfigured, getTokenCommentary, getSignalSecondOpinion } from './services/kimi';
+import { recordSignal } from './utils/signalStore';
 
 // ─── Position tracking ─────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
 
     log('INFO', `[${symbol}] *** BUY SIGNAL detected ***`);
     emit('bot:signal', { symbol, mint, price: currentPrice, marketCap });
+    recordSignal(symbol, mint, currentPrice, marketCap);
 
     // ── 冷却期 / 每日次数检查 ─────────────────────────────────────────────
     const blockReason = signalBlockReason(mint, pre.path);

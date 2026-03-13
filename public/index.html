@@ -533,6 +533,25 @@
     </div>
   </div>
 
+  <!-- Signal History (full-width) -->
+  <div class="card" style="grid-column: 1 / -1; min-height: unset;">
+    <div class="card-header">
+      <span>📈 历史信号记录</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <select id="sh-days" onchange="loadSignalHistory()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 6px;font-family:inherit;font-size:11px;outline:none;">
+          <option value="1">今日</option>
+          <option value="7" selected>最近7天</option>
+          <option value="14">最近14天</option>
+          <option value="30">最近30天</option>
+        </select>
+        <button onclick="loadSignalHistory()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;font-family:inherit;font-size:11px;cursor:pointer;">刷新</button>
+      </div>
+    </div>
+    <div class="card-body" id="signal-history-body" style="padding:0;">
+      <div style="color:var(--muted);text-align:center;padding:24px;font-size:12px">加载中…</div>
+    </div>
+  </div>
+
   <!-- AI Assistant (full-width) -->
   <div class="card" style="grid-column: 1 / -1; min-height: unset;">
     <div class="card-header">
@@ -643,6 +662,34 @@ restoreState();
     if (state.lastCycle) document.getElementById('stat-cycle').textContent = fmtTime(state.lastCycle);
   } catch (e) {
     console.warn('[Billy] initFromStorage error:', e);
+  }
+})();
+
+// ── 页面加载时从服务器读取今日历史信号，预填充 signalMints ──────────────
+(async function preloadSignalHistory() {
+  try {
+    const res  = await fetch('/api/signal-history?days=1');
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      for (const day of data) {
+        for (const sig of (day.signals ?? [])) {
+          state.signalMints.add(sig.mint);
+          // 同步 prices 缓存（如果还没有更新数据则用历史值补全）
+          if (!state.prices[sig.mint]) {
+            state.prices[sig.mint] = {
+              symbol: sig.symbol, mint: sig.mint,
+              price: sig.price, marketCap: sig.marketCap ?? 0,
+              change24h: 0, updatedAt: new Date(sig.timestamp),
+            };
+          }
+        }
+      }
+      renderPrices();
+    }
+    loadSignalHistory();
+  } catch (e) {
+    console.warn('[Billy] preloadSignalHistory error:', e);
+    loadSignalHistory();
   }
 })();
 
@@ -1348,6 +1395,63 @@ socket.on('bot:ai-reply', ({ answer }) => {
   if (thinkingEl) thinkingEl.remove();
   appendAiMsg('ai', answer);
 });
+
+// ── 历史信号记录 ────────────────────────────────────────────────────────────
+
+async function loadSignalHistory() {
+  const days  = document.getElementById('sh-days')?.value ?? '7';
+  const body  = document.getElementById('signal-history-body');
+  if (!body) return;
+  try {
+    const res  = await fetch(`/api/signal-history?days=${days}`);
+    const data = await res.json();
+    renderSignalHistory(data);
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--red);text-align:center;padding:16px;font-size:12px">加载失败: ${e.message}</div>`;
+  }
+}
+
+function renderSignalHistory(data) {
+  const body = document.getElementById('signal-history-body');
+  if (!body) return;
+  if (!Array.isArray(data) || data.length === 0) {
+    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;font-size:12px">暂无信号记录</div>';
+    return;
+  }
+
+  const rows = data.map(day => {
+    const sigRows = day.signals.map(s => {
+      const t    = new Date(s.timestamp);
+      const time = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')}`;
+      const mc   = fmtMC(s.marketCap ?? 0);
+      const shortMint = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
+      return `<tr>
+        <td style="color:var(--muted);font-size:11px">${time} UTC</td>
+        <td><b style="color:var(--yellow)">${escHtml(s.symbol)}</b></td>
+        <td style="font-size:10px;color:var(--muted);font-family:monospace;cursor:pointer" title="${s.mint}" onclick="copyMint('${s.mint}',this)">${shortMint}</td>
+        <td style="color:var(--blue)">${mc}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div style="border-bottom:1px solid var(--border)">
+      <div style="padding:6px 16px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);background:#0a0e14;display:flex;justify-content:space-between">
+        <span>${day.date}</span>
+        <span style="color:var(--yellow)">${day.signals.length} 个信号</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">时间</th>
+          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">代币</th>
+          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">合约</th>
+          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">市值</th>
+        </tr></thead>
+        <tbody>${sigRows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = rows;
+}
 
 function copyWalletAddr() {
   if (!_walletAddress) return;

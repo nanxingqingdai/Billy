@@ -138,6 +138,13 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     }
   });
 
+  // 历史信号查询
+  app.get('/api/signal-history', (req, res) => {
+    const days = Math.min(parseInt(String(req.query['days'] ?? '7')), 60);
+    const { getSignalHistory } = require('./utils/signalStore') as typeof import('./utils/signalStore');
+    res.json(getSignalHistory(days));
+  });
+
   // Wire Socket.io into the emitter singleton
   registerIO(io);
 
