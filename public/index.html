@@ -379,7 +379,10 @@
         </div>
         <div class="wl-row" style="align-items:center">
           <div class="wl-field"><label>缩量比例</label><input id="wl-new-vcr" type="number" value="0.65" step="0.05" /></div>
-          <div class="wl-field" style="flex-direction:row;align-items:center;gap:6px">
+          <div class="wl-field"><label>至少达标根数</label><input id="wl-new-minlowamp" type="number" value="6" min="1" max="10" /></div>
+        </div>
+        <div class="wl-row" style="align-items:center">
+          <div class="wl-field" style="flex-direction:row;align-items:center;gap:6px;grid-column:span 2">
             <button id="wl-amp-check-btn" onclick="checkAmpCandles()" style="white-space:nowrap;flex-shrink:0">检查低振幅</button>
             <span id="wl-amp-result" style="font-size:12px;color:var(--muted);white-space:nowrap">—</span>
           </div>
@@ -950,12 +953,12 @@ function buildTokenCard(t) {
           <select id="wf-int-${t.mint}">
             ${['15m','1H','4H','1D'].map(v => `<option value="${v}"${t.signal.interval===v?' selected':''}>${v}</option>`).join('')}
           </select></div>
-        <div class="wl-field"><label>回看根数</label>
-          <input type="number" id="wf-look-${t.mint}" value="${t.signal.lookback}" min="2" step="1" /></div>
-      </div>
-      <div class="wl-row">
         <div class="wl-field"><label>最大振幅 %</label>
           <input type="number" id="wf-amp-${t.mint}" value="${t.signal.maxAmplitudePct}" step="0.5" /></div>
+      </div>
+      <div class="wl-row">
+        <div class="wl-field"><label>至少达标根数</label>
+          <input type="number" id="wf-minamp-${t.mint}" value="${t.signal.minLowAmpBars ?? 6}" min="1" max="10" step="1" /></div>
         <div class="wl-field"><label>缩量比例</label>
           <input type="number" id="wf-vcr-${t.mint}" value="${t.signal.volumeContractionRatio}" step="0.05" /></div>
       </div>
@@ -1039,7 +1042,8 @@ function saveToken(mint) {
     slippageBps: Number(document.getElementById(`wf-slip-${mint}`)?.value),
     signal: {
       interval:               document.getElementById(`wf-int-${mint}`)?.value,
-      lookback:               Number(document.getElementById(`wf-look-${mint}`)?.value),
+      lookback:               10,
+      minLowAmpBars:          Number(document.getElementById(`wf-minamp-${mint}`)?.value),
       maxAmplitudePct:        Number(document.getElementById(`wf-amp-${mint}`)?.value),
       volumeContractionRatio: Number(document.getElementById(`wf-vcr-${mint}`)?.value),
     },
@@ -1094,6 +1098,7 @@ function submitAddToken() {
     signal: {
       interval:               document.getElementById('wl-new-interval').value,
       lookback:               10,
+      minLowAmpBars:          Number(document.getElementById('wl-new-minlowamp').value),
       maxAmplitudePct:        Number(document.getElementById('wl-new-amp').value),
       volumeContractionRatio: Number(document.getElementById('wl-new-vcr').value),
     },

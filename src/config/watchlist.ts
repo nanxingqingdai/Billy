@@ -12,8 +12,9 @@ export interface SellBatch {
 
 export interface SignalConfig {
   interval: KlineInterval;        // K-line interval to analyse, e.g. '1H'
-  lookback: number;               // number of candles to look back
-  maxAmplitudePct: number;        // max avg candle amplitude to qualify (e.g. 4 = 4%)
+  lookback: number;               // number of candles to look back (fixed 10)
+  maxAmplitudePct: number;        // max candle amplitude to qualify (e.g. 4 = 4%)
+  minLowAmpBars: number;          // min number of low-amp bars required out of last 10 (e.g. 6)
   volumeContractionRatio: number; // latest volume must be below avg * this ratio
 }
 
@@ -104,6 +105,8 @@ export function updateToken(mint: string, updates: TokenUpdate): string[] {
       errors.push('signal.lookback must be between 2 and 500');
     if (s.maxAmplitudePct <= 0 || s.maxAmplitudePct > 100)
       errors.push('signal.maxAmplitudePct must be between 0 and 100');
+    if (s.minLowAmpBars !== undefined && (s.minLowAmpBars < 1 || s.minLowAmpBars > 10))
+      errors.push('signal.minLowAmpBars must be between 1 and 10');
     if (s.volumeContractionRatio <= 0 || s.volumeContractionRatio > 2)
       errors.push('signal.volumeContractionRatio must be between 0 and 2');
   }

@@ -78,10 +78,22 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
   const { symbol, mint, signal, maxBuyUsdt, slippageBps, sellBatches } = token;
 
   try {
-    const candles = await getRecentOHLCV(mint, signal.interval, signal.lookback + 5);
-    if (candles.length < signal.lookback + 1) {
+    const candles = await getRecentOHLCV(mint, signal.interval, 15);
+    if (candles.length < 11) {
       log('WARN', `[${symbol}] Not enough candles (${candles.length}), skipping`);
       return;
+    }
+
+    // ── 低振幅根数检查：最近10根已收盘K线中达标根数 ──────────────────────
+    const minLowAmpBars = signal.minLowAmpBars ?? 1;
+    if (minLowAmpBars > 1) {
+      const closed10 = candles.slice(0, -1).slice(-10);
+      const lowAmpCount = closed10.filter(c => c.o > 0 && ((c.h - c.l) / c.o) * 100 < signal.maxAmplitudePct).length;
+      if (lowAmpCount < minLowAmpBars) {
+        log('INFO', `[${symbol}] 低振幅根数不足 (${lowAmpCount}/${minLowAmpBars})，跳过`);
+        return;
+      }
+      log('INFO', `[${symbol}] 低振幅根数通过 (${lowAmpCount}/${minLowAmpBars})`);
     }
 
     const priceData = await getValidatedPrice(mint);
