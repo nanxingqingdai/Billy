@@ -375,11 +375,14 @@
               <option value="1D">1D</option><option value="15m">15m</option>
             </select>
           </div>
-          <div class="wl-field"><label>回看根数</label><input id="wl-new-lookback" type="number" value="6" min="2" /></div>
-        </div>
-        <div class="wl-row">
           <div class="wl-field"><label>最大振幅 %</label><input id="wl-new-amp" type="number" value="4" step="0.5" /></div>
+        </div>
+        <div class="wl-row" style="align-items:center">
           <div class="wl-field"><label>缩量比例</label><input id="wl-new-vcr" type="number" value="0.65" step="0.05" /></div>
+          <div class="wl-field" style="flex-direction:row;align-items:center;gap:6px">
+            <button id="wl-amp-check-btn" onclick="checkAmpCandles()" style="white-space:nowrap;flex-shrink:0">检查低振幅</button>
+            <span id="wl-amp-result" style="font-size:12px;color:var(--muted);white-space:nowrap">—</span>
+          </div>
         </div>
         <div style="display:flex;gap:8px">
           <button id="wl-add-cancel" onclick="hideAddForm()">取消</button>
@@ -967,6 +970,31 @@ function buildTokenCard(t) {
   </div>`;
 }
 
+async function checkAmpCandles() {
+  const mint     = document.getElementById('wl-new-mint').value.trim();
+  const interval = document.getElementById('wl-new-interval').value;
+  const ampPct   = parseFloat(document.getElementById('wl-new-amp').value);
+  const result   = document.getElementById('wl-amp-result');
+  const btn      = document.getElementById('wl-amp-check-btn');
+  if (!mint) { result.textContent = '请先填写合约地址'; result.style.color = '#f44'; return; }
+  btn.disabled = true;
+  result.style.color = 'var(--muted)';
+  result.textContent = '查询中…';
+  try {
+    const res  = await fetch(`/api/amp-check?mint=${encodeURIComponent(mint)}&interval=${interval}&ampPct=${ampPct}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const color = data.count >= 5 ? '#4caf50' : data.count >= 3 ? '#ff9800' : '#f44336';
+    result.style.color = color;
+    result.textContent = `最近${data.total}根已收盘K线 ${data.count}/${data.total} 根低振幅 (<${ampPct}%)`;
+  } catch (e) {
+    result.style.color = '#f44';
+    result.textContent = '查询失败: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function copyMint(mint, el) {
   const ta = document.createElement('textarea');
   ta.value = mint;
@@ -1065,7 +1093,7 @@ function submitAddToken() {
     slippageBps:Number(document.getElementById('wl-new-slippage').value),
     signal: {
       interval:               document.getElementById('wl-new-interval').value,
-      lookback:               Number(document.getElementById('wl-new-lookback').value),
+      lookback:               10,
       maxAmplitudePct:        Number(document.getElementById('wl-new-amp').value),
       volumeContractionRatio: Number(document.getElementById('wl-new-vcr').value),
     },

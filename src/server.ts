@@ -40,6 +40,24 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     res.json({ status: 'ok', uptime: process.uptime() });
   });
 
+  // 低振幅检查：最近 10 根已收盘 K 线中有几根符合振幅要求
+  app.get('/api/amp-check', async (req, res) => {
+    const mint     = String(req.query['mint']     ?? '');
+    const interval = String(req.query['interval'] ?? '1H');
+    const ampPct   = parseFloat(String(req.query['ampPct'] ?? '5'));
+    if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
+    try {
+      const { getRecentOHLCV } = await import('./services/geckoTerminal');
+      const candles = await getRecentOHLCV(mint, interval as any, 12);
+      // 去掉最新一根（可能未收盘），取最近 10 根已收盘
+      const closed = candles.slice(0, -1).slice(-10);
+      const count  = closed.filter(c => c.o > 0 && ((c.h - c.l) / c.o) * 100 < ampPct).length;
+      res.json({ count, total: closed.length });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   // Wire Socket.io into the emitter singleton
   registerIO(io);
 
