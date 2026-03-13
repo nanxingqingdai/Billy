@@ -1,6 +1,8 @@
 import { config } from './config/env';
 import { getActiveTokens, WatchlistToken, SellBatch } from './config/watchlist';
-import { getRecentOHLCV, getTokenPrice, isLowVolContraction, checkEntryPreConditions, getTokenOverview } from './services/birdeye';
+import { getValidatedPrice, getRecentOHLCV, checkEntryPreConditions } from './services/marketDataFallback';
+import { getTokenOverview } from './services/geckoTerminal';
+import { isLowVolContraction } from './services/birdeye';
 import { buyWithUsdt, getTokenBalance, getSolBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
 import { log } from './utils/logger';
 import { emit } from './utils/emitter';
@@ -82,7 +84,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       return;
     }
 
-    const priceData = await getTokenPrice(mint);
+    const priceData = await getValidatedPrice(mint);
     const currentPrice = priceData.value;
 
     log('INFO', `[${symbol}] Price: $${currentPrice.toFixed(6)}  24h: ${priceData.priceChange24h >= 0 ? '+' : ''}${priceData.priceChange24h?.toFixed(2) ?? '?'}%`);
