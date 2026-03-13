@@ -378,6 +378,9 @@
         </div>
         <div class="wl-row" style="align-items:center">
           <div class="wl-field"><label>缩量比例</label><input id="wl-new-vcr" type="number" value="0.5" step="0.05" /></div>
+        </div>
+        <div class="wl-row">
+          <div class="wl-field"><label>峰值量占比上限</label><input id="wl-new-peakratio" type="number" value="0.9" step="0.05" min="0.1" max="1" /></div>
           <div class="wl-field"><label>最近10根K线振幅最少达标根数</label><input id="wl-new-minlowamp" type="number" value="3" min="1" max="10" /></div>
         </div>
         <div class="wl-row" style="align-items:center">
@@ -960,6 +963,8 @@ function buildTokenCard(t) {
           <input type="number" id="wf-minamp-${t.mint}" value="${t.signal.minLowAmpBars ?? 3}" min="1" max="10" step="1" /></div>
         <div class="wl-field"><label>缩量比例</label>
           <input type="number" id="wf-vcr-${t.mint}" value="${t.signal.volumeContractionRatio}" step="0.05" /></div>
+        <div class="wl-field"><label>峰值量占比上限</label>
+          <input type="number" id="wf-peakratio-${t.mint}" value="${t.signal.maxVolPeakRatio ?? 0.9}" step="0.05" min="0.1" max="1" /></div>
       </div>
       <div class="wl-batches-label">分批卖出</div>
       <table class="wl-batches-table">
@@ -1099,6 +1104,7 @@ function saveToken(mint) {
       minLowAmpBars:          Number(document.getElementById(`wf-minamp-${mint}`)?.value),
       maxAmplitudePct:        Number(document.getElementById(`wf-amp-${mint}`)?.value),
       volumeContractionRatio: Number(document.getElementById(`wf-vcr-${mint}`)?.value),
+      maxVolPeakRatio:        Number(document.getElementById(`wf-peakratio-${mint}`)?.value),
     },
     sellBatches,
   };
@@ -1154,6 +1160,7 @@ function submitAddToken() {
       minLowAmpBars:          Number(document.getElementById('wl-new-minlowamp').value),
       maxAmplitudePct:        Number(document.getElementById('wl-new-amp').value),
       volumeContractionRatio: Number(document.getElementById('wl-new-vcr').value),
+      maxVolPeakRatio:        Number(document.getElementById('wl-new-peakratio').value),
     },
     sellBatches: [
       { priceMultiplier: 1.5, portion: 0.34 },

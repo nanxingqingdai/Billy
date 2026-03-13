@@ -45,6 +45,7 @@ const DEFAULT_TOKEN_PARAMS = {
     minLowAmpBars:          3,
     maxAmplitudePct:        4,
     volumeContractionRatio: 0.5,
+    maxVolPeakRatio:        0.9,
   },
   sellBatches: [
     { priceMultiplier: 1.5, portion: 0.34 },

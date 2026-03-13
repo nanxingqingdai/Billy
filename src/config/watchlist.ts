@@ -15,7 +15,8 @@ export interface SignalConfig {
   lookback: number;               // number of candles to look back (fixed 10)
   maxAmplitudePct: number;        // max candle amplitude to qualify (e.g. 4 = 4%)
   minLowAmpBars: number;          // min number of low-amp bars required out of last 10 (e.g. 6)
-  volumeContractionRatio: number; // latest volume must be below avg * this ratio
+  volumeContractionRatio: number; // avg(last10) / avg(all) must be below this ratio
+  maxVolPeakRatio: number;        // avg(last10) must be below max(all) * this ratio (e.g. 0.9)
 }
 
 export interface WatchlistToken {
@@ -109,6 +110,8 @@ export function updateToken(mint: string, updates: TokenUpdate): string[] {
       errors.push('signal.minLowAmpBars must be between 1 and 10');
     if (s.volumeContractionRatio <= 0 || s.volumeContractionRatio > 2)
       errors.push('signal.volumeContractionRatio must be between 0 and 2');
+    if (s.maxVolPeakRatio !== undefined && (s.maxVolPeakRatio <= 0 || s.maxVolPeakRatio > 1))
+      errors.push('signal.maxVolPeakRatio must be between 0 and 1');
   }
 
   if (errors.length > 0) return errors;
