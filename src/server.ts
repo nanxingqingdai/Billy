@@ -41,18 +41,51 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
   });
 
   // 低振幅检查：最近 10 根已收盘 K 线中有几根符合振幅要求
+  // 同时返回代币年龄、ATH 市值和推荐默认值
   app.get('/api/amp-check', async (req, res) => {
     const mint     = String(req.query['mint']     ?? '');
     const interval = String(req.query['interval'] ?? '1H');
     const ampPct   = parseFloat(String(req.query['ampPct'] ?? '5'));
     if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
     try {
-      const { getRecentOHLCV } = await import('./services/geckoTerminal');
-      const candles = await getRecentOHLCV(mint, interval as any, 12);
-      // 去掉最新一根（可能未收盘），取最近 10 根已收盘
+      const { getRecentOHLCV, getAllOHLCV } = await import('./services/geckoTerminal');
+      const { getDexScreenerSummary }       = await import('./services/dexscreener');
+
+      // 并发：当前K线 + 日K全量（判断年龄和ATH）+ DexScreener市值
+      const [candles, dailyCandles, ds] = await Promise.all([
+        getRecentOHLCV(mint, interval as any, 12),
+        getRecentOHLCV(mint, '1D', 1000),
+        getDexScreenerSummary(mint),
+      ]);
+
+      // 低振幅计数
       const closed = candles.slice(0, -1).slice(-10);
       const count  = closed.filter(c => c.o > 0 && ((c.h - c.l) / c.o) * 100 < ampPct).length;
-      res.json({ count, total: closed.length });
+
+      // 代币年龄
+      const firstTs  = dailyCandles.length > 0 ? dailyCandles[0]!.unixTime : Date.now() / 1000;
+      const ageDays  = (Date.now() / 1000 - firstTs) / 86400;
+
+      // ATH 市值估算
+      const athPrice        = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
+      const supply          = ds.priceUsd > 0 ? ds.marketCap / ds.priceUsd : 0;
+      const athMarketCapUsd = athPrice * supply;
+
+      // 推荐默认值
+      let suggestAmpPct: number;
+      let suggestMinBars: number;
+      if (ageDays > 40) {
+        suggestAmpPct  = 15;
+        suggestMinBars = 3;
+      } else if (athMarketCapUsd > 20_000_000) {
+        suggestAmpPct  = 20;
+        suggestMinBars = 4;
+      } else {
+        suggestAmpPct  = 10;
+        suggestMinBars = 4;
+      }
+
+      res.json({ count, total: closed.length, ageDays, athMarketCapUsd, suggestAmpPct, suggestMinBars });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }

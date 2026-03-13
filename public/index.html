@@ -987,9 +987,23 @@ async function checkAmpCandles() {
     const res  = await fetch(`/api/amp-check?mint=${encodeURIComponent(mint)}&interval=${interval}&ampPct=${ampPct}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    const color = data.count >= 5 ? '#4caf50' : data.count >= 3 ? '#ff9800' : '#f44336';
+
+    // 自动填入推荐默认值
+    document.getElementById('wl-new-amp').value       = data.suggestAmpPct;
+    document.getElementById('wl-new-minlowamp').value = data.suggestMinBars;
+
+    // 路径标签
+    const ageDays = data.ageDays ?? 0;
+    const ath     = data.athMarketCapUsd ?? 0;
+    const pathLabel = ageDays > 40 ? '老币 (>40天)'
+      : ath > 20_000_000 ? `新币大市值 (ATH $${(ath/1e6).toFixed(1)}M)`
+      : `新币小市值 (ATH $${(ath/1e6).toFixed(2)}M)`;
+
+    // 重新用推荐振幅计数
+    const recount = data.count; // server already used user's ampPct, show actual count
+    const color = recount >= data.suggestMinBars ? '#4caf50' : recount >= data.suggestMinBars - 1 ? '#ff9800' : '#f44336';
     result.style.color = color;
-    result.textContent = `最近${data.total}根已收盘K线 ${data.count}/${data.total} 根低振幅 (<${ampPct}%)`;
+    result.textContent = `${pathLabel} | 振幅<${data.suggestAmpPct}% 需≥${data.suggestMinBars}根 | 当前 ${recount}/${data.total} 根`;
   } catch (e) {
     result.style.color = '#f44';
     result.textContent = '查询失败: ' + e.message;
