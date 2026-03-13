@@ -449,6 +449,25 @@
     </div>
   </div>
 
+  <!-- Signal History (full-width) -->
+  <div class="card" style="grid-column: 1 / -1; min-height: unset;">
+    <div class="card-header">
+      <span>📈 历史信号记录</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <select id="sh-days" onchange="loadSignalHistory()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 6px;font-family:inherit;font-size:11px;outline:none;">
+          <option value="1">今日</option>
+          <option value="7" selected>最近7天</option>
+          <option value="14">最近14天</option>
+          <option value="30">最近30天</option>
+        </select>
+        <button onclick="loadSignalHistory()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;font-family:inherit;font-size:11px;cursor:pointer;">刷新</button>
+      </div>
+    </div>
+    <div class="card-body" id="signal-history-body" style="padding:0;">
+      <div style="color:var(--muted);text-align:center;padding:24px;font-size:12px">加载中…</div>
+    </div>
+  </div>
+
   <!-- Positions -->
   <div class="card">
     <div class="card-header">
@@ -492,25 +511,6 @@
           <tr><td colspan="4" class="no-data">等待首次扫描…</td></tr>
         </tbody>
       </table>
-    </div>
-  </div>
-
-  <!-- Signal History (full-width) -->
-  <div class="card" style="grid-column: 1 / -1; min-height: unset;">
-    <div class="card-header">
-      <span>📈 历史信号记录</span>
-      <div style="display:flex;align-items:center;gap:10px">
-        <select id="sh-days" onchange="loadSignalHistory()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 6px;font-family:inherit;font-size:11px;outline:none;">
-          <option value="1">今日</option>
-          <option value="7" selected>最近7天</option>
-          <option value="14">最近14天</option>
-          <option value="30">最近30天</option>
-        </select>
-        <button onclick="loadSignalHistory()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;font-family:inherit;font-size:11px;cursor:pointer;">刷新</button>
-      </div>
-    </div>
-    <div class="card-body" id="signal-history-body" style="padding:0;">
-      <div style="color:var(--muted);text-align:center;padding:24px;font-size:12px">加载中…</div>
     </div>
   </div>
 
