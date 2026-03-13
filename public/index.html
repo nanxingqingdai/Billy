@@ -144,7 +144,9 @@
     .wl-token-label b { font-size: 13px; }
     .wl-token-label .wl-name { color: var(--muted); font-size: 11px; margin-left: 6px; }
     .wl-token-label-row { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .wl-mint { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .wl-mint { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .wl-mint:hover { color: var(--accent); }
+    .wl-mint.copied { color: #4caf50; }
     .wl-remove-btn {
       flex-shrink: 0; width: 28px; height: 28px;
       background: none; border: 1px solid transparent; color: var(--muted);
@@ -929,7 +931,7 @@ function buildTokenCard(t) {
       </label>
       <div class="wl-token-label">
         <div class="wl-token-label-row"><b>${escHtml(t.symbol)}</b><span class="wl-name">${escHtml(t.name)}</span></div>
-        <div class="wl-mint">${shortMint}</div>
+        <div class="wl-mint" title="${t.mint}" onclick="event.stopPropagation(); copyMint('${t.mint}', this)">${shortMint}</div>
       </div>
       <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="移除">✕</button>
     </div>
@@ -963,6 +965,15 @@ function buildTokenCard(t) {
       <button class="wl-save-btn" onclick="saveToken('${t.mint}')">保存</button>
     </div>
   </div>`;
+}
+
+function copyMint(mint, el) {
+  navigator.clipboard.writeText(mint).then(() => {
+    el.classList.add('copied');
+    const orig = el.textContent;
+    el.textContent = '已复制 ✓';
+    setTimeout(() => { el.classList.remove('copied'); el.textContent = orig; }, 1500);
+  });
 }
 
 function toggleCardBody(mint) {
