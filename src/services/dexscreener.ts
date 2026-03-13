@@ -1,9 +1,6 @@
 import axios from 'axios';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { config } from '../config/env';
 
 const BASE_URL = 'https://api.dexscreener.com/latest/dex/tokens';
-const JUPITER_PRICE_API = 'https://price.jup.ag/v6/price';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -120,28 +117,25 @@ export async function getDexScreenerSummary(
   };
 }
 
-// ─── Jupiter price + Solana supply → market cap ────────────────────────────
+// ─── DexScreener market cap (single token) ─────────────────────────────────
 
 /**
- * 用 Jupiter Price API v2 获取实时价格，结合 Solana RPC 流通量计算市值。
- * 比 DexScreener 的 marketCap 字段更及时准确。
+ * 查询单个代币的当前市值。
+ * 取流动性最高的交易对的 marketCap，fallback 到 fdv。
  * 失败时返回 0。
  */
 export async function getJupiterMarketCap(mintAddress: string): Promise<number> {
   try {
-    const [priceRes, supplyRes] = await Promise.all([
-      axios.get<{ data: Record<string, { price: string }> }>(
-        `${JUPITER_PRICE_API}?ids=${mintAddress}`,
-        { timeout: 8_000 },
-      ),
-      new Connection(config.rpcUrl, 'confirmed').getTokenSupply(new PublicKey(mintAddress)),
-    ]);
-
-    const priceStr = priceRes.data.data?.[mintAddress]?.price;
-    const price    = priceStr ? parseFloat(priceStr) : 0;
-    const supply   = supplyRes.value.uiAmount ?? 0;
-
-    return price > 0 && supply > 0 ? price * supply : 0;
+    const res  = await axios.get<{ pairs: RawPair[] | null }>(
+      `${BASE_URL}/${mintAddress}`,
+      { timeout: 10_000 },
+    );
+    const pairs = (res.data.pairs ?? []).filter(p => (p.liquidity?.usd ?? 0) >= 50);
+    if (pairs.length === 0) return 0;
+    const best = pairs.reduce((a, b) =>
+      (a.liquidity?.usd ?? 0) >= (b.liquidity?.usd ?? 0) ? a : b
+    );
+    return best.marketCap ?? best.fdv ?? 0;
   } catch {
     return 0;
   }
