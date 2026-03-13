@@ -41,7 +41,8 @@ const DEFAULT_TOKEN_PARAMS = {
   slippageBps:  300,
   signal: {
     interval:               '1H' as const,
-    lookback:               6,
+    lookback:               10,
+    minLowAmpBars:          3,
     maxAmplitudePct:        4,
     volumeContractionRatio: 0.65,
   },
