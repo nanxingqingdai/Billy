@@ -159,7 +159,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     log('INFO', `[${symbol}] 缩量通过 (近10均量/全量均量 = ${(volRatio * 100).toFixed(1)}% < ${signal.volumeContractionRatio * 100}%)`);
 
     // ── 近10根均量必须 < 历史最大成交量 × maxVolPeakRatio ───────────────
-    const peakThreshold = signal.maxVolPeakRatio ?? 0.9;
+    const peakThreshold = signal.maxVolPeakRatio ?? 0.1;
     const maxVol        = Math.max(...closedCandles.map(c => c.v));
     const maxVolRatio   = maxVol > 0 ? recent10AvgVol / maxVol : 0;
     if (maxVolRatio >= peakThreshold) {
