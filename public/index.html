@@ -869,7 +869,7 @@ function addTradeRow(t) {
     <td class="neutral">${fmtTime(t.time)}</td>
     <td>${tag}${dryTag}</td>
     <td><b>${t.symbol}</b></td>
-    <td>${fmtMC(t.marketCap ?? 0)}</td>
+    <td>${fmtMC(state.prices[t.mint]?.marketCap ?? t.marketCap ?? 0)}</td>
     <td>${amtStr}</td>
     <td>${txLink}</td>`;
   tbody.insertBefore(tr, tbody.firstChild);
@@ -894,13 +894,16 @@ function renderTradesAll() {
       <td class="neutral">${fmtTime(t.time)}</td>
       <td>${tag}${dryTag}</td>
       <td><b>${t.symbol}</b></td>
-      <td>${fmtMC(t.marketCap ?? 0)}</td>
+      <td>${fmtMC(state.prices[t.mint]?.marketCap ?? t.marketCap ?? 0)}</td>
       <td>${amtStr}</td>
       <td>${txLink}</td>`;
     tbody.appendChild(tr);
   }
   document.getElementById('trade-count').textContent = state.trades.length;
 }
+
+// 每 2 分钟用最新 prices 数据刷新交易记录表的市值列
+setInterval(renderTradesAll, 2 * 60 * 1000);
 
 // ── Log ────────────────────────────────────────────────────────────────────
 
