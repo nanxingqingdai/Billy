@@ -49,36 +49,36 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
       const { getRecentOHLCV } = await import('./services/geckoTerminal');
       const { getDexScreenerSummary } = await import('./services/dexscreener');
 
-      // 并发：DexScreener基本信息 + 日K（判断年龄和ATH）
-      const [dsResp, dailyCandles, ds] = await Promise.all([
+      // 并发：DexScreener基本信息（必须）+ 日K和市值（可选，失败不影响symbol/name）
+      const [dsRespResult, dailyCandlesResult, dsResult] = await Promise.allSettled([
         axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 }),
         getRecentOHLCV(mint, '1D', 1000),
         getDexScreenerSummary(mint),
       ]);
 
-      // symbol / name
-      const pairs: any[] = dsResp.data.pairs ?? [];
+      // symbol / name（必须成功）
+      if (dsRespResult.status === 'rejected') throw new Error('DexScreener 查询失败');
+      const pairs: any[] = dsRespResult.value.data.pairs ?? [];
       if (pairs.length === 0) { res.status(404).json({ error: '未找到该代币' }); return; }
       const pair   = pairs.find(p => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
       const isBase = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase();
       const symbol = isBase ? pair.baseToken.symbol : (pair.quoteToken?.symbol ?? '');
       const name   = isBase ? pair.baseToken.name   : (pair.quoteToken?.name   ?? '');
 
-      // 年龄 & ATH 市值
-      const firstTs        = dailyCandles.length > 0 ? dailyCandles[0]!.unixTime : Date.now() / 1000;
-      const ageDays        = (Date.now() / 1000 - firstTs) / 86400;
-      const athPrice       = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
-      const supply         = ds.priceUsd > 0 ? ds.marketCap / ds.priceUsd : 0;
-      const athMarketCapUsd = athPrice * supply;
-
-      // 推荐配置（对应策略表）
-      let interval: string, suggestAmpPct: number, suggestMinBars: number;
-      if (ageDays > 40) {
-        interval = '1D'; suggestAmpPct = 15; suggestMinBars = 3;            // Mature
-      } else if (athMarketCapUsd > 20_000_000) {
-        interval = '4H'; suggestAmpPct = 20; suggestMinBars = 4;            // Young-large
-      } else {
-        interval = '4H'; suggestAmpPct = 10; suggestMinBars = 4;            // Young-small
+      // 年龄 & ATH 市值（可选，失败时降级为默认推荐）
+      let interval = '4H', suggestAmpPct = 10, suggestMinBars = 4;
+      let ageDays = 0, athMarketCapUsd = 0;
+      if (dailyCandlesResult.status === 'fulfilled' && dsResult.status === 'fulfilled') {
+        const dailyCandles = dailyCandlesResult.value;
+        const ds = dsResult.value;
+        const firstTs   = dailyCandles.length > 0 ? dailyCandles[0]!.unixTime : Date.now() / 1000;
+        ageDays         = (Date.now() / 1000 - firstTs) / 86400;
+        const athPrice  = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
+        const supply    = ds.priceUsd > 0 ? ds.marketCap / ds.priceUsd : 0;
+        athMarketCapUsd = athPrice * supply;
+        if (ageDays > 40)                   { interval = '1D'; suggestAmpPct = 15; suggestMinBars = 3; }
+        else if (athMarketCapUsd > 20_000_000) { interval = '4H'; suggestAmpPct = 20; suggestMinBars = 4; }
+        else                                { interval = '4H'; suggestAmpPct = 10; suggestMinBars = 4; }
       }
 
       res.json({ symbol, name, ageDays, athMarketCapUsd, interval, suggestAmpPct, suggestMinBars });
