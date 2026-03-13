@@ -365,7 +365,6 @@
         </div>
         <div class="wl-field"><label>合约地址</label><input id="wl-new-mint" placeholder="Base58 合约地址" /></div>
         <div class="wl-row">
-          <div class="wl-field"><label>最大买入 (USDT)</label><input id="wl-new-maxbuy" type="number" value="50" min="1" /></div>
           <div class="wl-field"><label>滑点 (bps)</label><input id="wl-new-slippage" type="number" value="200" min="10" /></div>
         </div>
         <div class="wl-row">
@@ -1107,7 +1106,7 @@ function submitAddToken() {
     name:       document.getElementById('wl-new-name').value.trim(),
     mint:       document.getElementById('wl-new-mint').value.trim(),
     active:     true,
-    maxBuyUsdt: Number(document.getElementById('wl-new-maxbuy').value),
+    maxBuyUsdt: 50,
     slippageBps:Number(document.getElementById('wl-new-slippage').value),
     signal: {
       interval:               document.getElementById('wl-new-interval').value,
