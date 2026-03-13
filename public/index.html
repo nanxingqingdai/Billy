@@ -1429,11 +1429,9 @@ function renderSignalHistory(data) {
 
   const rows = data.map(day => {
     const sigRows = day.signals.map(s => {
-      const t         = new Date(s.timestamp);
-      const time      = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')}`;
-      const mcSignal  = s.marketCap ?? 0;
-      const mcNow     = state.prices[s.mint]?.marketCap ?? 0;
-      const shortMint = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
+      const mcSignal   = s.marketCap ?? 0;
+      const mcNow      = state.prices[s.mint]?.marketCap ?? 0;
+      const shortMint  = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
 
       // 涨跌幅 = (当前 - 信号时) / 信号时
       let chgCell = '<td style="color:var(--muted)">—</td>';
@@ -1444,13 +1442,22 @@ function renderSignalHistory(data) {
         chgCell = `<td style="color:${cls};font-weight:600">${sign}${pct.toFixed(1)}%</td>`;
       }
 
+      // 信号预警时间（本地完整时间）
+      const sigDate    = new Date(s.timestamp);
+      const sigTimeStr = sigDate.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false });
+
+      // 市值数据刷新时间
+      const refreshAt  = state.prices[s.mint]?.updatedAt;
+      const refreshStr = refreshAt ? refreshAt.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false }) : '—';
+
       return `<tr>
-        <td style="color:var(--muted);font-size:11px">${time} UTC</td>
         <td><b style="color:var(--yellow)">${escHtml(s.symbol)}</b></td>
         <td style="font-size:10px;color:var(--muted);font-family:monospace;cursor:pointer" title="${s.mint}" onclick="copyMint('${s.mint}',this)">${shortMint}</td>
         <td style="color:var(--blue)">${fmtMC(mcSignal)}</td>
         <td style="color:var(--text)">${mcNow > 0 ? fmtMC(mcNow) : '<span style="color:var(--muted)">—</span>'}</td>
         ${chgCell}
+        <td style="color:var(--muted);font-size:11px;white-space:nowrap">${sigTimeStr}</td>
+        <td style="color:var(--muted);font-size:11px;white-space:nowrap">${refreshStr}</td>
       </tr>`;
     }).join('');
 
@@ -1461,7 +1468,7 @@ function renderSignalHistory(data) {
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr>
-          ${th('时间')}${th('代币')}${th('合约')}${th('信号时市值')}${th('当前市值')}${th('变化')}
+          ${th('代币')}${th('合约')}${th('信号时市值')}${th('当前市值')}${th('变化')}${th('信号预警时间')}${th('市值刷新时间')}
         </tr></thead>
         <tbody>${sigRows}</tbody>
       </table>
