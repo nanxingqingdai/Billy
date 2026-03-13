@@ -1,7 +1,7 @@
 import { config } from './config/env';
 import { getActiveTokens, WatchlistToken, SellBatch } from './config/watchlist';
 import { getValidatedPrice, getRecentOHLCV, checkEntryPreConditions } from './services/marketDataFallback';
-import { getDexScreenerSummary } from './services/dexscreener';
+import { getDexScreenerSummary, getJupiterMarketCap } from './services/dexscreener';
 import { getTokenOverview } from './services/geckoTerminal';
 import { buyWithUsdt, getTokenBalance, getSolBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
 import { log } from './utils/logger';
@@ -100,12 +100,13 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       log('INFO', `[${symbol}] 低振幅根数通过 (${lowAmpCount}/${minLowAmpBars})`);
     }
 
-    const [priceData, ds] = await Promise.all([
+    const [priceData, ds, jupiterMC] = await Promise.all([
       getValidatedPrice(mint),
       getDexScreenerSummary(mint).catch(() => null),
+      getJupiterMarketCap(mint).catch(() => 0),
     ]);
     const currentPrice  = priceData.value;
-    const marketCap     = ds?.marketCap ?? 0;
+    const marketCap     = jupiterMC > 0 ? jupiterMC : (ds?.marketCap ?? 0);
     const change24h     = priceData.priceChange24h ?? ds?.priceChange24h ?? 0;
 
     log('INFO', `[${symbol}] MC: $${(marketCap/1e6).toFixed(3)}M  24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%`);
