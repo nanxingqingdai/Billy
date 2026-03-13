@@ -483,7 +483,7 @@
         <thead>
           <tr>
             <th>代币</th>
-            <th>价格</th>
+            <th>市值</th>
             <th>24h</th>
             <th>更新时间</th>
           </tr>
@@ -508,7 +508,7 @@
             <th>时间</th>
             <th>类型</th>
             <th>代币</th>
-            <th>价格</th>
+            <th>市值</th>
             <th>金额</th>
             <th>交易</th>
           </tr>
@@ -581,7 +581,8 @@ const socket = io();
 // ── State ──────────────────────────────────────────────────────────────────
 const state = {
   positions:   {},   // mint → { symbol, entryPrice, currentPrice, usdtSpent, pnlPct }
-  prices:      {},   // mint → { symbol, price, change24h, updatedAt }
+  prices:      {},   // mint → { symbol, price, marketCap, change24h, updatedAt }
+  signalMints: new Set(),  // mints that triggered a signal
   commentary:  {},   // mint → { symbol, text }   ← Kimi 行情解读
   trades:      [],   // [ { time, type, symbol, price, usdtAmount, txid, dryRun, batch } ]
   signals:     0,
@@ -669,17 +670,19 @@ socket.on('bot:cycle', ({ phase, tokenCount, positionCount }) => {
   appendLog('INFO', `扫描${phase === 'complete' ? '完成' : '开始'} — ${tokenCount} 个代币`);
 });
 
-socket.on('bot:price', ({ symbol, mint, price, change24h }) => {
-  state.prices[mint] = { symbol, price, change24h: change24h ?? 0, updatedAt: new Date() };
+socket.on('bot:price', ({ symbol, mint, price, marketCap, change24h }) => {
+  state.prices[mint] = { symbol, mint, price, marketCap: marketCap ?? 0, change24h: change24h ?? 0, updatedAt: new Date() };
   renderPrices();
   saveState();
 });
 
-socket.on('bot:signal', ({ symbol, mint, price }) => {
+socket.on('bot:signal', ({ symbol, mint, price, marketCap }) => {
   state.signals++;
+  state.signalMints.add(mint);
   document.getElementById('stat-signals').textContent = state.signals;
-  appendLog('WARN', `⚡ 买入信号：${symbol} @ $${fmt(price)}`);
-  addTradeRow({ time: new Date(), type: 'signal', symbol, price, usdtAmount: 0, txid: '', dryRun: false });
+  appendLog('WARN', `⚡ 买入信号：${symbol} MC $${fmtMC(marketCap ?? 0)}`);
+  addTradeRow({ time: new Date(), type: 'signal', symbol, mint, price, marketCap: marketCap ?? 0, usdtAmount: 0, txid: '', dryRun: false });
+  renderPrices();
   saveState();
 });
 
@@ -760,10 +763,22 @@ function renderPositions() {
   }).join('');
 }
 
+function fmtMC(v) {
+  if (!v || v === 0) return '—';
+  if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return '$' + (v / 1e6).toFixed(3) + 'M';
+  if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(0);
+}
+
 function renderPrices() {
   const tbody = document.getElementById('prices-table');
-  const entries = Object.values(state.prices);
-  if (entries.length === 0) return;
+  // 只显示触发过信号的代币
+  const entries = Object.values(state.prices).filter(p => state.signalMints.has(p.mint));
+  if (entries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="no-data">暂无信号代币…</td></tr>';
+    return;
+  }
   try {
     tbody.innerHTML = entries.map(p => {
       const chg      = p.change24h ?? 0;
@@ -775,7 +790,7 @@ function renderPrices() {
         : '';
       return `<tr>
         <td><b>${escHtml(p.symbol)}</b>${noteLine}</td>
-        <td>$${fmt(p.price)}</td>
+        <td>${fmtMC(p.marketCap)}</td>
         <td class="${chgClass}">${chgSign}${chg.toFixed(2)}%</td>
         <td class="neutral">${fmtTime(p.updatedAt)}</td>
       </tr>`;
@@ -807,7 +822,7 @@ function addTradeRow(t) {
     <td class="neutral">${fmtTime(t.time)}</td>
     <td>${tag}${dryTag}</td>
     <td><b>${t.symbol}</b></td>
-    <td>$${fmt(t.price)}</td>
+    <td>${fmtMC(t.marketCap ?? 0)}</td>
     <td>${amtStr}</td>
     <td>${txLink}</td>`;
   tbody.insertBefore(tr, tbody.firstChild);
@@ -832,7 +847,7 @@ function renderTradesAll() {
       <td class="neutral">${fmtTime(t.time)}</td>
       <td>${tag}${dryTag}</td>
       <td><b>${t.symbol}</b></td>
-      <td>$${fmt(t.price)}</td>
+      <td>${fmtMC(t.marketCap ?? 0)}</td>
       <td>${amtStr}</td>
       <td>${txLink}</td>`;
     tbody.appendChild(tr);

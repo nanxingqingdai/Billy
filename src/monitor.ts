@@ -1,6 +1,7 @@
 import { config } from './config/env';
 import { getActiveTokens, WatchlistToken, SellBatch } from './config/watchlist';
 import { getValidatedPrice, getRecentOHLCV, checkEntryPreConditions } from './services/marketDataFallback';
+import { getDexScreenerSummary } from './services/dexscreener';
 import { getTokenOverview } from './services/geckoTerminal';
 import { buyWithUsdt, getTokenBalance, getSolBalance, getQuote, toRawAmount, USDT_MINT, USDT_DECIMALS } from './services/jupiter';
 import { log } from './utils/logger';
@@ -98,11 +99,16 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       log('INFO', `[${symbol}] 低振幅根数通过 (${lowAmpCount}/${minLowAmpBars})`);
     }
 
-    const priceData = await getValidatedPrice(mint);
-    const currentPrice = priceData.value;
+    const [priceData, ds] = await Promise.all([
+      getValidatedPrice(mint),
+      getDexScreenerSummary(mint).catch(() => null),
+    ]);
+    const currentPrice  = priceData.value;
+    const marketCap     = ds?.marketCap ?? 0;
+    const change24h     = priceData.priceChange24h ?? ds?.priceChange24h ?? 0;
 
-    log('INFO', `[${symbol}] Price: $${currentPrice.toFixed(6)}  24h: ${priceData.priceChange24h >= 0 ? '+' : ''}${priceData.priceChange24h?.toFixed(2) ?? '?'}%`);
-    emit('bot:price', { symbol, mint, price: currentPrice, change24h: priceData.priceChange24h ?? 0 });
+    log('INFO', `[${symbol}] MC: $${(marketCap/1e6).toFixed(3)}M  24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%`);
+    emit('bot:price', { symbol, mint, price: currentPrice, marketCap, change24h });
 
     // ── Kimi 行情解读（fire-and-forget，不阻塞扫描循环）─────────────────
     if (isKimiConfigured()) {
@@ -169,7 +175,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     log('INFO', `[${symbol}] 历史峰值量检查通过 (近10均量/历史最大量 = ${(maxVolRatio * 100).toFixed(1)}% < ${(peakThreshold*100).toFixed(0)}%)`);
 
     log('INFO', `[${symbol}] *** BUY SIGNAL detected ***`);
-    emit('bot:signal', { symbol, mint, price: currentPrice });
+    emit('bot:signal', { symbol, mint, price: currentPrice, marketCap });
 
     // ── 冷却期 / 每日次数检查 ─────────────────────────────────────────────
     const blockReason = signalBlockReason(mint, pre.path);
