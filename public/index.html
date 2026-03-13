@@ -975,18 +975,37 @@ function buildTokenCard(t) {
 async function autoFillTokenInfo() {
   const mint = document.getElementById('wl-new-mint').value.trim();
   if (!mint) return;
-  const symbolEl = document.getElementById('wl-new-symbol');
-  const nameEl   = document.getElementById('wl-new-name');
+  const symbolEl  = document.getElementById('wl-new-symbol');
+  const nameEl    = document.getElementById('wl-new-name');
+  const resultEl  = document.getElementById('wl-amp-result');
   symbolEl.placeholder = '查询中…';
   nameEl.placeholder   = '查询中…';
+  if (resultEl) { resultEl.style.color = 'var(--muted)'; resultEl.textContent = '分析代币路径中…'; }
   try {
     const res  = await fetch(`/api/token-info?mint=${encodeURIComponent(mint)}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+
+    // symbol / name
     if (!symbolEl.value) symbolEl.value = data.symbol;
     if (!nameEl.value)   nameEl.value   = data.name;
+
+    // 推荐配置自动填入
+    const intervalEl = document.getElementById('wl-new-interval');
+    if (intervalEl) intervalEl.value = data.interval;
+    document.getElementById('wl-new-amp').value       = data.suggestAmpPct;
+    document.getElementById('wl-new-minlowamp').value = data.suggestMinBars;
+
+    // 路径提示
+    const ageDays = data.ageDays ?? 0;
+    const ath     = data.athMarketCapUsd ?? 0;
+    const path    = ageDays > 40 ? 'Mature (>40天 · 1D)' :
+      ath > 20_000_000 ? `Young-large (ATH $${(ath/1e6).toFixed(1)}M · 4H)` :
+                         `Young-small (ATH $${(ath/1e6).toFixed(2)}M · 4H)`;
+    if (resultEl) { resultEl.style.color = '#4caf50'; resultEl.textContent = `✓ ${path} | 振幅<${data.suggestAmpPct}% 需≥${data.suggestMinBars}根`; }
   } catch (e) {
     symbolEl.placeholder = '查询失败，请手动填写';
+    if (resultEl) { resultEl.style.color = '#f44'; resultEl.textContent = '路径分析失败: ' + e.message; }
   } finally {
     if (!symbolEl.value) symbolEl.placeholder = '如 WIF';
     if (!nameEl.value)   nameEl.placeholder   = '如 dogwifhat';

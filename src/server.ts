@@ -40,22 +40,48 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     res.json({ status: 'ok', uptime: process.uptime() });
   });
 
-  // 代币基本信息查询（symbol / name）
+  // 代币基本信息查询（symbol / name / 推荐配置）
   app.get('/api/token-info', async (req, res) => {
     const mint = String(req.query['mint'] ?? '');
     if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
     try {
       const axios = (await import('axios')).default;
-      const resp  = await axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 });
-      const pairs: any[] = resp.data.pairs ?? [];
+      const { getRecentOHLCV } = await import('./services/geckoTerminal');
+      const { getDexScreenerSummary } = await import('./services/dexscreener');
+
+      // 并发：DexScreener基本信息 + 日K（判断年龄和ATH）
+      const [dsResp, dailyCandles, ds] = await Promise.all([
+        axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 }),
+        getRecentOHLCV(mint, '1D', 1000),
+        getDexScreenerSummary(mint),
+      ]);
+
+      // symbol / name
+      const pairs: any[] = dsResp.data.pairs ?? [];
       if (pairs.length === 0) { res.status(404).json({ error: '未找到该代币' }); return; }
-      // 找出 baseToken 地址匹配 mint 的那个 pair
-      const pair = pairs.find(p => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
-      const symbol = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase()
-        ? pair.baseToken.symbol : pair.quoteToken?.symbol ?? '';
-      const name   = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase()
-        ? pair.baseToken.name   : pair.quoteToken?.name   ?? '';
-      res.json({ symbol, name });
+      const pair   = pairs.find(p => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
+      const isBase = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase();
+      const symbol = isBase ? pair.baseToken.symbol : (pair.quoteToken?.symbol ?? '');
+      const name   = isBase ? pair.baseToken.name   : (pair.quoteToken?.name   ?? '');
+
+      // 年龄 & ATH 市值
+      const firstTs        = dailyCandles.length > 0 ? dailyCandles[0]!.unixTime : Date.now() / 1000;
+      const ageDays        = (Date.now() / 1000 - firstTs) / 86400;
+      const athPrice       = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
+      const supply         = ds.priceUsd > 0 ? ds.marketCap / ds.priceUsd : 0;
+      const athMarketCapUsd = athPrice * supply;
+
+      // 推荐配置（对应策略表）
+      let interval: string, suggestAmpPct: number, suggestMinBars: number;
+      if (ageDays > 40) {
+        interval = '1D'; suggestAmpPct = 15; suggestMinBars = 3;            // Mature
+      } else if (athMarketCapUsd > 20_000_000) {
+        interval = '4H'; suggestAmpPct = 20; suggestMinBars = 4;            // Young-large
+      } else {
+        interval = '4H'; suggestAmpPct = 10; suggestMinBars = 4;            // Young-small
+      }
+
+      res.json({ symbol, name, ageDays, athMarketCapUsd, interval, suggestAmpPct, suggestMinBars });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
