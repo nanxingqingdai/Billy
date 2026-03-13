@@ -145,6 +145,35 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     res.json(getSignalHistory(days));
   });
 
+  // 批量查询当前市值（DexScreener 支持逗号分隔最多 30 个 mint）
+  app.get('/api/market-caps', async (req, res) => {
+    const mintsParam = String(req.query['mints'] ?? '');
+    if (!mintsParam) { res.json({}); return; }
+    const mints = mintsParam.split(',').map(m => m.trim()).filter(Boolean).slice(0, 30);
+    try {
+      const axios = (await import('axios')).default;
+      const url   = `https://api.dexscreener.com/latest/dex/tokens/${mints.join(',')}`;
+      const resp  = await axios.get(url, { timeout: 10_000 });
+      const pairs: any[] = resp.data.pairs ?? [];
+      const result: Record<string, { marketCap: number; updatedAt: string }> = {};
+      for (const mint of mints) {
+        const pair = pairs.find(p =>
+          p.baseToken?.address?.toLowerCase() === mint.toLowerCase() ||
+          p.quoteToken?.address?.toLowerCase() === mint.toLowerCase()
+        );
+        if (pair) {
+          result[mint] = {
+            marketCap: pair.marketCap ?? pair.fdv ?? 0,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      }
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   // Wire Socket.io into the emitter singleton
   registerIO(io);
 

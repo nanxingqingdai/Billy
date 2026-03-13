@@ -1408,9 +1408,32 @@ async function loadSignalHistory() {
   const body  = document.getElementById('signal-history-body');
   if (!body) return;
   try {
+    // 1. 拉取历史信号
     const res  = await fetch(`/api/signal-history?days=${days}`);
     const data = await res.json();
     _signalHistoryData = data;
+
+    // 2. 收集所有 mint，批量刷新当前市值
+    const mints = [...new Set(
+      (data ?? []).flatMap(day => (day.signals ?? []).map(s => s.mint))
+    )].filter(Boolean);
+
+    if (mints.length > 0) {
+      try {
+        const mcRes  = await fetch(`/api/market-caps?mints=${mints.join(',')}`);
+        const mcData = await mcRes.json();
+        for (const [mint, v] of Object.entries(mcData)) {
+          if (!state.prices[mint]) {
+            state.prices[mint] = { symbol: '', mint, price: 0, marketCap: 0, change24h: 0, updatedAt: null };
+          }
+          state.prices[mint].marketCap = v.marketCap;
+          state.prices[mint].updatedAt = new Date(v.updatedAt);
+        }
+      } catch (e) {
+        console.warn('[Billy] market-caps fetch failed:', e);
+      }
+    }
+
     renderSignalHistory(data);
   } catch (e) {
     body.innerHTML = `<div style="color:var(--red);text-align:center;padding:16px;font-size:12px">加载失败: ${e.message}</div>`;
