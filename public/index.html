@@ -1401,6 +1401,8 @@ socket.on('bot:ai-reply', ({ answer }) => {
 
 // ── 历史信号记录 ────────────────────────────────────────────────────────────
 
+let _signalHistoryData = [];  // 缓存最近一次拉取的数据，供刷新市值时复用
+
 async function loadSignalHistory() {
   const days  = document.getElementById('sh-days')?.value ?? '7';
   const body  = document.getElementById('signal-history-body');
@@ -1408,6 +1410,7 @@ async function loadSignalHistory() {
   try {
     const res  = await fetch(`/api/signal-history?days=${days}`);
     const data = await res.json();
+    _signalHistoryData = data;
     renderSignalHistory(data);
   } catch (e) {
     body.innerHTML = `<div style="color:var(--red);text-align:center;padding:16px;font-size:12px">加载失败: ${e.message}</div>`;
@@ -1422,17 +1425,32 @@ function renderSignalHistory(data) {
     return;
   }
 
+  const th = (label) => `<th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">${label}</th>`;
+
   const rows = data.map(day => {
     const sigRows = day.signals.map(s => {
-      const t    = new Date(s.timestamp);
-      const time = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')}`;
-      const mc   = fmtMC(s.marketCap ?? 0);
+      const t         = new Date(s.timestamp);
+      const time      = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')}`;
+      const mcSignal  = s.marketCap ?? 0;
+      const mcNow     = state.prices[s.mint]?.marketCap ?? 0;
       const shortMint = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
+
+      // 涨跌幅 = (当前 - 信号时) / 信号时
+      let chgCell = '<td style="color:var(--muted)">—</td>';
+      if (mcSignal > 0 && mcNow > 0) {
+        const pct  = ((mcNow - mcSignal) / mcSignal) * 100;
+        const sign = pct >= 0 ? '+' : '';
+        const cls  = pct >= 0 ? 'var(--green)' : 'var(--red)';
+        chgCell = `<td style="color:${cls};font-weight:600">${sign}${pct.toFixed(1)}%</td>`;
+      }
+
       return `<tr>
         <td style="color:var(--muted);font-size:11px">${time} UTC</td>
         <td><b style="color:var(--yellow)">${escHtml(s.symbol)}</b></td>
         <td style="font-size:10px;color:var(--muted);font-family:monospace;cursor:pointer" title="${s.mint}" onclick="copyMint('${s.mint}',this)">${shortMint}</td>
-        <td style="color:var(--blue)">${mc}</td>
+        <td style="color:var(--blue)">${fmtMC(mcSignal)}</td>
+        <td style="color:var(--text)">${mcNow > 0 ? fmtMC(mcNow) : '<span style="color:var(--muted)">—</span>'}</td>
+        ${chgCell}
       </tr>`;
     }).join('');
 
@@ -1443,10 +1461,7 @@ function renderSignalHistory(data) {
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr>
-          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">时间</th>
-          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">代币</th>
-          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">合约</th>
-          <th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">市值</th>
+          ${th('时间')}${th('代币')}${th('合约')}${th('信号时市值')}${th('当前市值')}${th('变化')}
         </tr></thead>
         <tbody>${sigRows}</tbody>
       </table>
@@ -1455,6 +1470,9 @@ function renderSignalHistory(data) {
 
   body.innerHTML = rows;
 }
+
+// 每 2 分钟用最新 prices 刷新历史信号的「当前市值」列（无需重新请求接口）
+setInterval(() => { if (_signalHistoryData.length > 0) renderSignalHistory(_signalHistoryData); }, 2 * 60 * 1000);
 
 function copyWalletAddr() {
   if (!_walletAddress) return;
