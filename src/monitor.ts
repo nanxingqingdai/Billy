@@ -158,6 +158,15 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     }
     log('INFO', `[${symbol}] 缩量通过 (近10均量/全量均量 = ${(volRatio * 100).toFixed(1)}% < ${signal.volumeContractionRatio * 100}%)`);
 
+    // ── 近10根均量必须 < 历史最大成交量的 90% ────────────────────────────
+    const maxVol       = Math.max(...closedCandles.map(c => c.v));
+    const maxVolRatio  = maxVol > 0 ? recent10AvgVol / maxVol : 0;
+    if (maxVolRatio >= 0.9) {
+      log('INFO', `[${symbol}] 近10均量未低于历史最大量90% (${(maxVolRatio * 100).toFixed(1)}%)，跳过`);
+      return;
+    }
+    log('INFO', `[${symbol}] 历史峰值量检查通过 (近10均量/历史最大量 = ${(maxVolRatio * 100).toFixed(1)}%)`);
+
     log('INFO', `[${symbol}] *** BUY SIGNAL detected ***`);
     emit('bot:signal', { symbol, mint, price: currentPrice });
 
