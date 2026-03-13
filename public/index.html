@@ -374,7 +374,7 @@
               <option value="1D">1D</option><option value="15m">15m</option>
             </select>
           </div>
-          <div class="wl-field"><label>最大振幅 %</label><input id="wl-new-amp" type="number" value="4" step="0.5" /></div>
+          <div class="wl-field"><label>低波动达标振幅阈值 %</label><input id="wl-new-amp" type="number" value="4" step="0.5" /></div>
         </div>
         <div class="wl-row" style="align-items:center">
           <div class="wl-field"><label>缩量比例</label><input id="wl-new-vcr" type="number" value="0.5" step="0.05" /></div>
@@ -952,7 +952,7 @@ function buildTokenCard(t) {
           <select id="wf-int-${t.mint}">
             ${['15m','1H','4H','1D'].map(v => `<option value="${v}"${t.signal.interval===v?' selected':''}>${v}</option>`).join('')}
           </select></div>
-        <div class="wl-field"><label>最大振幅 %</label>
+        <div class="wl-field"><label>低波动达标振幅阈值 %</label>
           <input type="number" id="wf-amp-${t.mint}" value="${t.signal.maxAmplitudePct}" step="0.5" /></div>
       </div>
       <div class="wl-row">
