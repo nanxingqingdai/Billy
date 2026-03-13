@@ -44,7 +44,7 @@ const DEFAULT_TOKEN_PARAMS = {
     lookback:               10,
     minLowAmpBars:          3,
     maxAmplitudePct:        4,
-    volumeContractionRatio: 0.65,
+    volumeContractionRatio: 0.5,
   },
   sellBatches: [
     { priceMultiplier: 1.5, portion: 0.34 },
