@@ -495,44 +495,6 @@
     </div>
   </div>
 
-  <!-- Trade history -->
-  <div class="card">
-    <div class="card-header">
-      <span>交易记录</span>
-      <span id="trade-count" class="neutral">0</span>
-    </div>
-    <div class="card-body">
-      <table>
-        <thead>
-          <tr>
-            <th>时间</th>
-            <th>类型</th>
-            <th>代币</th>
-            <th>市值</th>
-            <th>金额</th>
-            <th>交易</th>
-          </tr>
-        </thead>
-        <tbody id="trades-table">
-          <tr><td colspan="6" class="no-data">暂无交易记录</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Live log -->
-  <div class="card">
-    <div class="card-header">
-      <span>实时日志</span>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted)">
-        <input type="checkbox" id="autoscroll" checked style="cursor:pointer"> 自动滚动
-      </label>
-    </div>
-    <div class="card-body" id="log-scroll">
-      <div id="log-container"></div>
-    </div>
-  </div>
-
   <!-- Signal History (full-width) -->
   <div class="card" style="grid-column: 1 / -1; min-height: unset;">
     <div class="card-header">
@@ -569,6 +531,44 @@
         <input id="ai-input" type="text" placeholder="问我关于持仓、信号、余额、风控的任何问题…" onkeydown="if(event.key==='Enter')sendAiQuery()" />
         <button id="ai-send-btn" onclick="sendAiQuery()">发送</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Trade history -->
+  <div class="card">
+    <div class="card-header">
+      <span>交易记录</span>
+      <span id="trade-count" class="neutral">0</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>类型</th>
+            <th>代币</th>
+            <th>市值</th>
+            <th>金额</th>
+            <th>交易</th>
+          </tr>
+        </thead>
+        <tbody id="trades-table">
+          <tr><td colspan="6" class="no-data">暂无交易记录</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Live log -->
+  <div class="card">
+    <div class="card-header">
+      <span>实时日志</span>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted)">
+        <input type="checkbox" id="autoscroll" checked style="cursor:pointer"> 自动滚动
+      </label>
+    </div>
+    <div class="card-body" id="log-scroll">
+      <div id="log-container"></div>
     </div>
   </div>
 
