@@ -363,7 +363,7 @@
           <div class="wl-field"><label>代币符号</label><input id="wl-new-symbol" placeholder="如 WIF" /></div>
           <div class="wl-field"><label>名称</label><input id="wl-new-name" placeholder="如 dogwifhat" /></div>
         </div>
-        <div class="wl-field"><label>合约地址</label><input id="wl-new-mint" placeholder="Base58 合约地址" /></div>
+        <div class="wl-field"><label>合约地址</label><input id="wl-new-mint" placeholder="Base58 合约地址" onblur="autoFillTokenInfo()" /></div>
         <div class="wl-row">
           <div class="wl-field"><label>滑点 (bps)</label><input id="wl-new-slippage" type="number" value="200" min="10" /></div>
         </div>
@@ -970,6 +970,27 @@ function buildTokenCard(t) {
       <button class="wl-save-btn" onclick="saveToken('${t.mint}')">保存</button>
     </div>
   </div>`;
+}
+
+async function autoFillTokenInfo() {
+  const mint = document.getElementById('wl-new-mint').value.trim();
+  if (!mint) return;
+  const symbolEl = document.getElementById('wl-new-symbol');
+  const nameEl   = document.getElementById('wl-new-name');
+  symbolEl.placeholder = '查询中…';
+  nameEl.placeholder   = '查询中…';
+  try {
+    const res  = await fetch(`/api/token-info?mint=${encodeURIComponent(mint)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (!symbolEl.value) symbolEl.value = data.symbol;
+    if (!nameEl.value)   nameEl.value   = data.name;
+  } catch (e) {
+    symbolEl.placeholder = '查询失败，请手动填写';
+  } finally {
+    if (!symbolEl.value) symbolEl.placeholder = '如 WIF';
+    if (!nameEl.value)   nameEl.placeholder   = '如 dogwifhat';
+  }
 }
 
 async function checkAmpCandles() {

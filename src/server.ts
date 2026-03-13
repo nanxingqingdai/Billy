@@ -40,6 +40,27 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     res.json({ status: 'ok', uptime: process.uptime() });
   });
 
+  // 代币基本信息查询（symbol / name）
+  app.get('/api/token-info', async (req, res) => {
+    const mint = String(req.query['mint'] ?? '');
+    if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
+    try {
+      const axios = (await import('axios')).default;
+      const resp  = await axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 });
+      const pairs: any[] = resp.data.pairs ?? [];
+      if (pairs.length === 0) { res.status(404).json({ error: '未找到该代币' }); return; }
+      // 找出 baseToken 地址匹配 mint 的那个 pair
+      const pair = pairs.find(p => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
+      const symbol = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase()
+        ? pair.baseToken.symbol : pair.quoteToken?.symbol ?? '';
+      const name   = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase()
+        ? pair.baseToken.name   : pair.quoteToken?.name   ?? '';
+      res.json({ symbol, name });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   // 低振幅检查：最近 10 根已收盘 K 线中有几根符合振幅要求
   // 同时返回代币年龄、ATH 市值和推荐默认值
   app.get('/api/amp-check', async (req, res) => {
