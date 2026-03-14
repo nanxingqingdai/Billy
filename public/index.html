@@ -105,21 +105,19 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    /* ── Watchlist panel ── */
-    #wl-overlay {
-      display: none; position: fixed; inset: 0; z-index: 50;
-      background: rgba(0,0,0,.55);
-    }
-    #wl-overlay.open { display: block; }
+    /* ── Page body (main + watchlist sidebar) ── */
+    .page-body { display: flex; align-items: flex-start; }
+    .layout { flex: 1; min-width: 0; order: 1; }
+
+    /* ── Watchlist sidebar (always visible, right side) ── */
     #wl-panel {
-      position: fixed; top: 0; right: 0; bottom: 0;
-      width: min(520px, 100vw);
+      width: 360px; flex-shrink: 0; order: 2;
+      position: sticky; top: 53px;
+      height: calc(100vh - 53px);
       background: var(--surface); border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; z-index: 51;
-      transform: translateX(100%); transition: transform .2s ease;
+      display: flex; flex-direction: column;
       overflow: hidden;
     }
-    #wl-overlay.open #wl-panel { transform: translateX(0); }
 
     .wl-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
     .wl-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
@@ -339,17 +337,16 @@
   <div class="header-right">
     <span id="status-badge" class="badge offline"><span class="badge-dot"></span>离线</span>
     <span id="uptime" class="uptime">--</span>
-    <button class="settings-btn" onclick="openWatchlist()" title="监控列表">📋 监控列表</button>
     <button class="settings-btn" onclick="openSettings()" title="风控配置">⚙ 风控配置</button>
   </div>
 </header>
 
-<!-- Watchlist overlay + panel -->
-<div id="wl-overlay" onclick="maybeCloseWatchlist(event)">
-  <div id="wl-panel">
+<div class="page-body">
+
+<!-- Watchlist sidebar -->
+<div id="wl-panel">
     <div class="settings-header">
       <span>📋 监控列表</span>
-      <button class="settings-close" onclick="closeWatchlist()">✕</button>
     </div>
     <div class="wl-body" id="wl-body">
       <div style="color:var(--muted);text-align:center;padding:24px">连接中…</div>
@@ -572,7 +569,9 @@
     </div>
   </div>
 
-</div>
+</div><!-- /.layout -->
+
+</div><!-- /.page-body -->
 
 <!-- Error banner -->
 <div id="error-banner">
@@ -971,7 +970,7 @@ socket.on('bot:watchlist', ({ tokens, errors }) => {
   renderWatchlist();
   if (errors && errors.length > 0) {
     setWlStatus('error', '✗ ' + errors.join(' · '));
-  } else if (document.getElementById('wl-overlay').classList.contains('open')) {
+  } else {
     setWlStatus('ok', '✓ 已保存');
     setTimeout(() => setWlStatus('', ''), 2500);
   }
@@ -1238,17 +1237,11 @@ function submitAddToken() {
 }
 
 function openWatchlist() {
-  document.getElementById('wl-overlay').classList.add('open');
   socket.emit('watchlist:get');
 }
 
-function closeWatchlist() {
-  document.getElementById('wl-overlay').classList.remove('open');
-}
-
-function maybeCloseWatchlist(e) {
-  if (e.target === document.getElementById('wl-overlay')) closeWatchlist();
-}
+function closeWatchlist() { /* sidebar is always visible */ }
+function maybeCloseWatchlist() {}
 
 function setWlStatus(cls, msg) {
   const el = document.getElementById('wl-status');
