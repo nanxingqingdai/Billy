@@ -346,7 +346,7 @@
 <!-- Watchlist sidebar -->
 <div id="wl-panel">
     <div class="settings-header">
-      <span>📋 监控列表</span>
+      <span>📋 监控列表 <span id="wl-count" style="color:var(--muted);font-size:13px"></span></span>
     </div>
     <div class="wl-body" id="wl-body">
       <div style="color:var(--muted);text-align:center;padding:24px">连接中…</div>
@@ -977,6 +977,9 @@ socket.on('bot:watchlist', ({ tokens, errors }) => {
 
 function renderWatchlist() {
   const body = document.getElementById('wl-body');
+  const countEl = document.getElementById('wl-count');
+  const activeCount = _watchlist.filter(t => t.active).length;
+  if (countEl) countEl.textContent = `(${activeCount}/${_watchlist.length})`;
   if (_watchlist.length === 0) {
     body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">暂无代币</div>';
     return;
