@@ -46,40 +46,37 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
     try {
       const axios = (await import('axios')).default;
-      const { getAllOHLCV } = await import('./services/geckoTerminal');
-      const { getDexScreenerSummary } = await import('./services/dexscreener');
+      const { getRecentOHLCV } = await import('./services/geckoTerminal');
 
-      // 并发：DexScreener基本信息（必须）+ 日K全量（判断年龄和ATH）+ 市值（可选，失败不影响symbol/name）
-      const [dsRespResult, dailyCandlesResult, dsResult] = await Promise.allSettled([
-        axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 }),
-        getAllOHLCV(mint, '1D'),
-        getDexScreenerSummary(mint),
-      ]);
-
-      // symbol / name（必须成功）
-      if (dsRespResult.status === 'rejected') throw new Error('DexScreener 查询失败');
-      const pairs: any[] = dsRespResult.value.data.pairs ?? [];
+      // DexScreener 基本信息（必须）
+      const dsResp = await axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 });
+      const pairs: any[] = dsResp.data.pairs ?? [];
       if (pairs.length === 0) { res.status(404).json({ error: '未找到该代币' }); return; }
-      const pair   = pairs.find(p => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
+      const pair   = pairs.find((p: any) => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
       const isBase = pair.baseToken?.address?.toLowerCase() === mint.toLowerCase();
       const symbol = isBase ? pair.baseToken.symbol : (pair.quoteToken?.symbol ?? '');
       const name   = isBase ? pair.baseToken.name   : (pair.quoteToken?.name   ?? '');
 
-      // 年龄 & ATH 市值（可选，失败时降级为默认推荐）
+      // 年龄：从 DexScreener pairCreatedAt 获取（毫秒时间戳）
+      const createdAt = pair.pairCreatedAt ? Number(pair.pairCreatedAt) : 0;
+      const ageDays   = createdAt > 0 ? (Date.now() - createdAt) / 86400_000 : 0;
+
+      // ATH 市值：日K最高价 × 流通量（可选，失败不影响 symbol/name）
+      let athMarketCapUsd = 0;
+      try {
+        const dailyCandles = await getRecentOHLCV(mint, '1D', 1000);
+        const athPrice     = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
+        const priceUsd     = parseFloat(pair.priceUsd ?? '0');
+        const mc           = pair.marketCap ?? pair.fdv ?? 0;
+        const supply       = priceUsd > 0 ? mc / priceUsd : 0;
+        athMarketCapUsd    = athPrice * supply;
+      } catch { /* 降级：ATH 为 0 */ }
+
+      // 推荐默认值
       let interval = '4H', suggestAmpPct = 10, suggestMinBars = 4;
-      let ageDays = 0, athMarketCapUsd = 0;
-      if (dailyCandlesResult.status === 'fulfilled' && dsResult.status === 'fulfilled') {
-        const dailyCandles = dailyCandlesResult.value;
-        const ds = dsResult.value;
-        const firstTs   = dailyCandles.length > 0 ? dailyCandles[0]!.unixTime : Date.now() / 1000;
-        ageDays         = (Date.now() / 1000 - firstTs) / 86400;
-        const athPrice  = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
-        const supply    = ds.priceUsd > 0 ? ds.marketCap / ds.priceUsd : 0;
-        athMarketCapUsd = athPrice * supply;
-        if (ageDays > 40)                   { interval = '1D'; suggestAmpPct = 15; suggestMinBars = 3; }
-        else if (athMarketCapUsd > 20_000_000) { interval = '4H'; suggestAmpPct = 20; suggestMinBars = 4; }
-        else                                { interval = '4H'; suggestAmpPct = 10; suggestMinBars = 4; }
-      }
+      if (ageDays > 40)                        { interval = '1D'; suggestAmpPct = 15; suggestMinBars = 3; }
+      else if (athMarketCapUsd > 20_000_000)   { interval = '4H'; suggestAmpPct = 20; suggestMinBars = 4; }
+      else                                     { interval = '4H'; suggestAmpPct = 10; suggestMinBars = 4; }
 
       res.json({ symbol, name, ageDays, athMarketCapUsd, interval, suggestAmpPct, suggestMinBars });
     } catch (err) {
@@ -95,28 +92,35 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     const ampPct   = parseFloat(String(req.query['ampPct'] ?? '5'));
     if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
     try {
-      const { getRecentOHLCV, getAllOHLCV } = await import('./services/geckoTerminal');
-      const { getDexScreenerSummary }       = await import('./services/dexscreener');
+      const axios = (await import('axios')).default;
+      const { getRecentOHLCV } = await import('./services/geckoTerminal');
 
-      // 并发：当前K线 + 日K全量（判断年龄和ATH）+ DexScreener市值
-      const [candles, dailyCandles, ds] = await Promise.all([
+      // 并发：当前K线 + DexScreener（年龄 + 市值）
+      const [candles, dsResp] = await Promise.all([
         getRecentOHLCV(mint, interval as any, 12),
-        getAllOHLCV(mint, '1D'),
-        getDexScreenerSummary(mint),
+        axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 }),
       ]);
 
       // 低振幅计数
       const closed = candles.slice(0, -1).slice(-10);
       const count  = closed.filter(c => c.o > 0 && ((c.h - c.l) / c.o) * 100 < ampPct).length;
 
-      // 代币年龄
-      const firstTs  = dailyCandles.length > 0 ? dailyCandles[0]!.unixTime : Date.now() / 1000;
-      const ageDays  = (Date.now() / 1000 - firstTs) / 86400;
+      // 从 DexScreener 获取年龄和市值
+      const pairs: any[] = dsResp.data.pairs ?? [];
+      const pair = pairs.find((p: any) => p.baseToken?.address?.toLowerCase() === mint.toLowerCase()) ?? pairs[0];
+      const createdAt = pair?.pairCreatedAt ? Number(pair.pairCreatedAt) : 0;
+      const ageDays   = createdAt > 0 ? (Date.now() - createdAt) / 86400_000 : 0;
+      const priceUsd  = parseFloat(pair?.priceUsd ?? '0');
+      const mc        = pair?.marketCap ?? pair?.fdv ?? 0;
+      const supply    = priceUsd > 0 ? mc / priceUsd : 0;
 
-      // ATH 市值估算
-      const athPrice        = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
-      const supply          = ds.priceUsd > 0 ? ds.marketCap / ds.priceUsd : 0;
-      const athMarketCapUsd = athPrice * supply;
+      // ATH 市值：日K最高价 × 流通量
+      let athMarketCapUsd = 0;
+      try {
+        const dailyCandles = await getRecentOHLCV(mint, '1D', 1000);
+        const athPrice     = dailyCandles.reduce((m, c) => Math.max(m, c.h), 0);
+        athMarketCapUsd    = athPrice * supply;
+      } catch { /* 降级 */ }
 
       // 推荐默认值
       let suggestAmpPct: number;
