@@ -11,28 +11,31 @@ export class BirdeyeExhaustedError extends Error {
   constructor() { super('All Birdeye API keys exhausted'); this.name = 'BirdeyeExhaustedError'; }
 }
 
-let _keyIndex   = 0;
-const _exhausted = new Set<number>();
+let _keyIndex    = 0;
+const _exhausted  = new Set<number>();
+const _rateLimitedUntil = new Map<number, number>(); // key index → timestamp ms
 
 function currentKey(): string {
   return config.birdeyeApiKeys[_keyIndex] ?? config.birdeyeApiKey;
 }
 
-/** 尝试切换到下一个未耗尽的 key。返回 true 表示成功，false 表示全部耗尽。 */
-function rotateKey(): boolean {
+/** 找到下一个既未耗尽也未被限速的 key。返回 true 表示成功切换。 */
+function rotateKey(markExhausted = false): boolean {
   const total = config.birdeyeApiKeys.length;
   if (total === 0) return false;
 
-  _exhausted.add(_keyIndex);
+  if (markExhausted) _exhausted.add(_keyIndex);
+
+  const now = Date.now();
   for (let i = 1; i < total; i++) {
     const next = (_keyIndex + i) % total;
-    if (!_exhausted.has(next)) {
-      _keyIndex = next;
-      log('WARN', `[Birdeye] Key #${_keyIndex} 额度耗尽，切换到 key #${next}`);
-      return true;
-    }
+    if (_exhausted.has(next)) continue;
+    if ((_rateLimitedUntil.get(next) ?? 0) > now) continue;
+    _keyIndex = next;
+    log('WARN', `[Birdeye] 切换到 key #${next}`);
+    return true;
   }
-  return false;  // 全部耗尽
+  return false;
 }
 
 export function isAllBirdeyeKeysExhausted(): boolean {
@@ -68,7 +71,7 @@ client.interceptors.response.use(
 
     // ── Compute units exhausted → rotate key & retry once ──────────────
     if (status === 400 && msg.includes('Compute units usage limit exceeded') && !cfg._keyRotated) {
-      if (rotateKey()) {
+      if (rotateKey(true)) {
         cfg._keyRotated = true;
         cfg._retryCount = 0;
         return client.request(cfg);
@@ -79,8 +82,15 @@ client.interceptors.response.use(
     if (retryCount >= 3) throw err;
 
     if (status === 429) {
-      const retryAfter = Number(err.response?.headers['retry-after'] ?? 1);
-      await sleep(retryAfter * 1000 + 500);
+      const retryAfterSec = Number(err.response?.headers['retry-after'] ?? 2);
+      // 标记当前 key 限速冷却，轮转到其他 key 重试
+      _rateLimitedUntil.set(_keyIndex, Date.now() + retryAfterSec * 1000 + 500);
+      if (rotateKey()) {
+        cfg._retryCount = retryCount + 1;
+        return client.request(cfg);
+      }
+      // 所有 key 都在冷却，等待后用当前 key 重试
+      await sleep(retryAfterSec * 1000 + 500);
       cfg._retryCount = retryCount + 1;
       return client.request(cfg);
     }
