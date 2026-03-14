@@ -371,7 +371,7 @@ async function runCycle(): Promise<void> {
 
   for (const token of tokens) {
     await scanToken(token, solBalance, usdtBalance);
-    await sleep(2000);
+    await sleep(5000);
   }
 
   emit('bot:cycle', { phase: 'complete', tokenCount: tokens.length, positionCount: positions.size });
