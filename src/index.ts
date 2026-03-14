@@ -9,6 +9,7 @@ import { startMoonshotListener } from './services/moonshotListener';
 import { notifyStartup, isTelegramConfigured } from './services/telegramNotifier';
 import { getActiveTokens } from './config/watchlist';
 import { startDailySummaryScheduler } from './services/dailySummary';
+import { startDuneSync } from './services/duneSync';
 import { isGeminiConfigured } from './services/gemini';
 import { isKimiConfigured } from './services/kimi';
 
@@ -41,6 +42,9 @@ async function main(): Promise<void> {
 
   // Start Moonshot channel listener (auto-discovers new tokens)
   startMoonshotListener();
+
+  // Start Dune sync (every 25 min, pump.fun high-volume tokens)
+  startDuneSync();
 
   // TG 启动通知
   if (isTelegramConfigured()) {

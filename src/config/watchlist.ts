@@ -36,8 +36,9 @@ export type TokenUpdate = Partial<Pick<WatchlistToken,
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 
-const DATA_DIR       = path.resolve(process.cwd(), 'data');
-const WATCHLIST_FILE = path.join(DATA_DIR, 'watchlist.json');
+const DATA_DIR        = path.resolve(process.cwd(), 'data');
+const WATCHLIST_FILE  = path.join(DATA_DIR, 'watchlist.json');
+const BLACKLIST_FILE  = path.join(DATA_DIR, 'watchlist-blacklist.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function readFromDisk(): WatchlistToken[] {
@@ -55,11 +56,33 @@ function saveToDisk(): void {
   }
 }
 
+function readBlacklist(): Set<string> {
+  if (!fs.existsSync(BLACKLIST_FILE)) return new Set();
+  try {
+    const arr = JSON.parse(fs.readFileSync(BLACKLIST_FILE, 'utf-8')) as string[];
+    return new Set(arr);
+  } catch { return new Set(); }
+}
+
+function saveBlacklist(): void {
+  try {
+    fs.writeFileSync(BLACKLIST_FILE, JSON.stringify([..._blacklist], null, 2));
+  } catch (e) {
+    log('WARN', `[Watchlist] Failed to persist blacklist: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 // ─── In-memory state ────────────────────────────────────────────────────────
 
-let _list: WatchlistToken[] = readFromDisk();
+let _list: WatchlistToken[]  = readFromDisk();
+let _blacklist: Set<string>  = readBlacklist();
 
 // ─── Public read API ────────────────────────────────────────────────────────
+
+/** Returns true if mint was manually removed and should not be auto-added again. */
+export function isBlacklisted(mint: string): boolean {
+  return _blacklist.has(mint);
+}
 
 /** All tokens including inactive — for dashboard display. */
 export function getWatchlist(): WatchlistToken[] {
@@ -123,7 +146,7 @@ export function updateToken(mint: string, updates: TokenUpdate): string[] {
 }
 
 /**
- * Add a brand-new token to the watchlist.
+ * Add a brand-new token to the watchlist (manual — removes from blacklist).
  * Returns an errors array; empty array means success.
  */
 export function addToken(token: WatchlistToken): string[] {
@@ -132,6 +155,13 @@ export function addToken(token: WatchlistToken): string[] {
   if (_list.some((t) => t.mint === token.mint))
     return [`Token with mint ${token.mint} already exists`];
 
+  // Manual add overrides blacklist
+  if (_blacklist.has(token.mint)) {
+    _blacklist.delete(token.mint);
+    saveBlacklist();
+    log('INFO', `[Watchlist] ${token.mint} removed from blacklist (manual add)`);
+  }
+
   _list.push(token);
   saveToDisk();
   log('INFO', `[Watchlist] ${token.symbol} added`);
@@ -139,17 +169,36 @@ export function addToken(token: WatchlistToken): string[] {
 }
 
 /**
- * Remove a token by mint address.
+ * Auto-add a token (e.g. from Dune sync). Skips if already in watchlist or blacklisted.
+ * Returns 'added' | 'exists' | 'blacklisted'.
+ */
+export function addTokenAuto(token: WatchlistToken): 'added' | 'exists' | 'blacklisted' {
+  if (_list.some((t) => t.mint === token.mint)) return 'exists';
+  if (_blacklist.has(token.mint))               return 'blacklisted';
+
+  _list.push(token);
+  saveToDisk();
+  log('INFO', `[Watchlist] [auto] ${token.symbol} (${token.mint.slice(0,8)}...) added`);
+  return 'added';
+}
+
+/**
+ * Remove a token by mint address (manual — adds to blacklist to prevent auto re-add).
  * Returns an errors array; empty array means success.
  */
 export function removeToken(mint: string): string[] {
   const idx = _list.findIndex((t) => t.mint === mint);
   if (idx === -1) return [`Token not found: ${mint}`];
 
-  const symbol = _list[idx].symbol;
+  const symbol = _list[idx]!.symbol;
   _list.splice(idx, 1);
   saveToDisk();
-  log('INFO', `[Watchlist] ${symbol} removed`);
+
+  // Blacklist so auto-sync never re-adds this token
+  _blacklist.add(mint);
+  saveBlacklist();
+
+  log('INFO', `[Watchlist] ${symbol} removed and blacklisted`);
   return [];
 }
 
