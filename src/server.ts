@@ -46,13 +46,13 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     if (!mint) { res.status(400).json({ error: 'mint required' }); return; }
     try {
       const axios = (await import('axios')).default;
-      const { getRecentOHLCV } = await import('./services/geckoTerminal');
+      const { getAllOHLCV } = await import('./services/geckoTerminal');
       const { getDexScreenerSummary } = await import('./services/dexscreener');
 
-      // 并发：DexScreener基本信息（必须）+ 日K和市值（可选，失败不影响symbol/name）
+      // 并发：DexScreener基本信息（必须）+ 日K全量（判断年龄和ATH）+ 市值（可选，失败不影响symbol/name）
       const [dsRespResult, dailyCandlesResult, dsResult] = await Promise.allSettled([
         axios.get(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { timeout: 10_000 }),
-        getRecentOHLCV(mint, '1D', 1000),
+        getAllOHLCV(mint, '1D'),
         getDexScreenerSummary(mint),
       ]);
 
@@ -101,7 +101,7 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
       // 并发：当前K线 + 日K全量（判断年龄和ATH）+ DexScreener市值
       const [candles, dailyCandles, ds] = await Promise.all([
         getRecentOHLCV(mint, interval as any, 12),
-        getRecentOHLCV(mint, '1D', 1000),
+        getAllOHLCV(mint, '1D'),
         getDexScreenerSummary(mint),
       ]);
 
