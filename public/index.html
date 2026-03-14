@@ -1394,6 +1394,8 @@ socket.on('bot:ai-reply', ({ answer }) => {
 // ── 历史信号记录 ────────────────────────────────────────────────────────────
 
 let _signalHistoryData = [];  // 缓存最近一次拉取的数据，供刷新市值时复用
+let _signalPage = 0;          // 当前页码（从 0 开始）
+const SIGNAL_PAGE_SIZE = 10;
 
 async function loadSignalHistory() {
   const days  = document.getElementById('sh-days')?.value ?? '7';
@@ -1404,6 +1406,7 @@ async function loadSignalHistory() {
     const res  = await fetch(`/api/signal-history?days=${days}`);
     const data = await res.json();
     _signalHistoryData = data;
+    _signalPage = 0;  // 切换天数范围时回到第一页
 
     // 2. 收集所有 mint，批量刷新当前市值
     const mints = [...new Set(
@@ -1440,62 +1443,79 @@ function renderSignalHistory(data) {
     return;
   }
 
+  // 打平所有信号，按时间倒序排列
+  const allSignals = data
+    .flatMap(day => (day.signals ?? []))
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const total      = allSignals.length;
+  const totalPages = Math.max(1, Math.ceil(total / SIGNAL_PAGE_SIZE));
+  _signalPage      = Math.max(0, Math.min(_signalPage, totalPages - 1));
+
+  const pageSignals = allSignals.slice(_signalPage * SIGNAL_PAGE_SIZE, (_signalPage + 1) * SIGNAL_PAGE_SIZE);
+
   const th = (label) => `<th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">${label}</th>`;
 
-  // 按日期倒序（最近的天在最上面）
-  const sortedData = [...data].sort((a, b) => b.date.localeCompare(a.date));
+  const sigRows = pageSignals.map(s => {
+    const mcSignal   = s.marketCap ?? 0;
+    const mcNow      = state.prices[s.mint]?.marketCap ?? 0;
+    const shortMint  = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
 
-  const rows = sortedData.map(day => {
-    // 每天内部按信号时间倒序
-    const sortedSignals = [...day.signals].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const sigRows = sortedSignals.map(s => {
-      const mcSignal   = s.marketCap ?? 0;
-      const mcNow      = state.prices[s.mint]?.marketCap ?? 0;
-      const shortMint  = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
+    // 涨跌幅 = (当前 - 信号时) / 信号时
+    let chgCell = '<td style="color:var(--muted)">—</td>';
+    if (mcSignal > 0 && mcNow > 0) {
+      const pct  = ((mcNow - mcSignal) / mcSignal) * 100;
+      const sign = pct >= 0 ? '+' : '';
+      const cls  = pct >= 0 ? 'var(--green)' : 'var(--red)';
+      chgCell = `<td style="color:${cls};font-weight:600">${sign}${pct.toFixed(1)}%</td>`;
+    }
 
-      // 涨跌幅 = (当前 - 信号时) / 信号时
-      let chgCell = '<td style="color:var(--muted)">—</td>';
-      if (mcSignal > 0 && mcNow > 0) {
-        const pct  = ((mcNow - mcSignal) / mcSignal) * 100;
-        const sign = pct >= 0 ? '+' : '';
-        const cls  = pct >= 0 ? 'var(--green)' : 'var(--red)';
-        chgCell = `<td style="color:${cls};font-weight:600">${sign}${pct.toFixed(1)}%</td>`;
-      }
+    // 信号预警时间（含日期）
+    const sigDate    = new Date(s.timestamp);
+    const sigTimeStr = sigDate.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false });
 
-      // 信号预警时间（本地完整时间）
-      const sigDate    = new Date(s.timestamp);
-      const sigTimeStr = sigDate.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false });
+    // 市值数据刷新时间
+    const refreshAt  = state.prices[s.mint]?.updatedAt;
+    const refreshStr = refreshAt ? refreshAt.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false }) : '—';
 
-      // 市值数据刷新时间
-      const refreshAt  = state.prices[s.mint]?.updatedAt;
-      const refreshStr = refreshAt ? refreshAt.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false }) : '—';
-
-      return `<tr>
-        <td><b style="color:var(--yellow)">${escHtml(s.symbol)}</b></td>
-        <td style="font-size:10px;color:var(--muted);font-family:monospace;cursor:pointer" title="${s.mint}" onclick="copyMint('${s.mint}',this)">${shortMint}</td>
-        <td style="color:var(--blue)">${fmtMC(mcSignal)}</td>
-        <td style="color:var(--text)">${mcNow > 0 ? fmtMC(mcNow) : '<span style="color:var(--muted)">—</span>'}</td>
-        ${chgCell}
-        <td style="color:var(--muted);font-size:11px;white-space:nowrap">${sigTimeStr}</td>
-        <td style="color:var(--muted);font-size:11px;white-space:nowrap">${refreshStr}</td>
-      </tr>`;
-    }).join('');
-
-    return `<div style="border-bottom:1px solid var(--border)">
-      <div style="padding:6px 16px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);background:#0a0e14;display:flex;justify-content:space-between">
-        <span>${day.date}</span>
-        <span style="color:var(--yellow)">${sortedSignals.length} 个信号</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr>
-          ${th('代币')}${th('合约')}${th('信号时市值')}${th('当前市值')}${th('变化')}${th('信号预警时间')}${th('市值刷新时间')}
-        </tr></thead>
-        <tbody>${sigRows}</tbody>
-      </table>
-    </div>`;
+    return `<tr>
+      <td><b style="color:var(--yellow)">${escHtml(s.symbol)}</b></td>
+      <td style="font-size:10px;color:var(--muted);font-family:monospace;cursor:pointer" title="${s.mint}" onclick="copyMint('${s.mint}',this)">${shortMint}</td>
+      <td style="color:var(--blue)">${fmtMC(mcSignal)}</td>
+      <td style="color:var(--text)">${mcNow > 0 ? fmtMC(mcNow) : '<span style="color:var(--muted)">—</span>'}</td>
+      ${chgCell}
+      <td style="color:var(--muted);font-size:11px;white-space:nowrap">${sigTimeStr}</td>
+      <td style="color:var(--muted);font-size:11px;white-space:nowrap">${refreshStr}</td>
+    </tr>`;
   }).join('');
 
-  body.innerHTML = rows;
+  // 分页控件
+  const btnStyle = (disabled) =>
+    `style="background:none;border:1px solid var(--border);color:${disabled ? 'var(--muted)' : 'var(--text)'};border-radius:4px;padding:2px 10px;font-family:inherit;font-size:11px;cursor:${disabled ? 'default' : 'pointer'};opacity:${disabled ? '0.4' : '1'}"`;
+  const pagination = `
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 12px;border-top:1px solid var(--border)">
+      <span style="font-size:11px;color:var(--muted)">共 ${total} 条</span>
+      <button ${btnStyle(_signalPage === 0)} onclick="shPagePrev()" ${_signalPage === 0 ? 'disabled' : ''}>上一页</button>
+      <span style="font-size:11px;color:var(--muted)">${_signalPage + 1} / ${totalPages}</span>
+      <button ${btnStyle(_signalPage >= totalPages - 1)} onclick="shPageNext()" ${_signalPage >= totalPages - 1 ? 'disabled' : ''}>下一页</button>
+    </div>`;
+
+  body.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        ${th('代币')}${th('合约')}${th('信号时市值')}${th('当前市值')}${th('变化')}${th('信号预警时间')}${th('市值刷新时间')}
+      </tr></thead>
+      <tbody>${sigRows}</tbody>
+    </table>
+    ${pagination}`;
+}
+
+function shPagePrev() {
+  if (_signalPage > 0) { _signalPage--; renderSignalHistory(_signalHistoryData); }
+}
+function shPageNext() {
+  const total = (_signalHistoryData ?? []).flatMap(d => d.signals ?? []).length;
+  if ((_signalPage + 1) * SIGNAL_PAGE_SIZE < total) { _signalPage++; renderSignalHistory(_signalHistoryData); }
 }
 
 // 每 2 分钟用最新 prices 刷新历史信号的「当前市值」列（无需重新请求接口）
