@@ -1442,8 +1442,13 @@ function renderSignalHistory(data) {
 
   const th = (label) => `<th style="font-size:10px;color:var(--muted);padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">${label}</th>`;
 
-  const rows = data.map(day => {
-    const sigRows = day.signals.map(s => {
+  // 按日期倒序（最近的天在最上面）
+  const sortedData = [...data].sort((a, b) => b.date.localeCompare(a.date));
+
+  const rows = sortedData.map(day => {
+    // 每天内部按信号时间倒序
+    const sortedSignals = [...day.signals].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const sigRows = sortedSignals.map(s => {
       const mcSignal   = s.marketCap ?? 0;
       const mcNow      = state.prices[s.mint]?.marketCap ?? 0;
       const shortMint  = s.mint.slice(0,6) + '…' + s.mint.slice(-4);
@@ -1479,7 +1484,7 @@ function renderSignalHistory(data) {
     return `<div style="border-bottom:1px solid var(--border)">
       <div style="padding:6px 16px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);background:#0a0e14;display:flex;justify-content:space-between">
         <span>${day.date}</span>
-        <span style="color:var(--yellow)">${day.signals.length} 个信号</span>
+        <span style="color:var(--yellow)">${sortedSignals.length} 个信号</span>
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr>
