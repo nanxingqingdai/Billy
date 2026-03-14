@@ -142,6 +142,26 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     }
   });
 
+  // 批量市值查询（逐个串行调用 DexScreener，避免并发限流）
+  app.get('/api/market-caps', async (_req, res) => {
+    try {
+      const { getDexScreenerSummary } = await import('./services/dexscreener');
+      const tokens = getWatchlist();
+      const result: Record<string, { marketCap: number; priceUsd: number; priceChange24h: number }> = {};
+      for (const t of tokens) {
+        try {
+          const ds = await getDexScreenerSummary(t.mint);
+          result[t.mint] = { marketCap: ds.marketCap, priceUsd: ds.priceUsd, priceChange24h: ds.priceChange24h };
+        } catch {
+          result[t.mint] = { marketCap: 0, priceUsd: 0, priceChange24h: 0 };
+        }
+      }
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   // 历史信号查询
   app.get('/api/signal-history', (req, res) => {
     const days = Math.min(parseInt(String(req.query['days'] ?? '7')), 60);

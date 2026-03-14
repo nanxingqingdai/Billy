@@ -140,6 +140,7 @@
     .wl-toggle { flex-shrink: 0; }
     .wl-token-label { flex: 1; min-width: 0; }
     .wl-token-label b { font-size: 13px; }
+    .wl-mc { font-size: 10px; color: var(--muted); margin-left: auto; white-space: nowrap; flex-shrink: 0; }
     .wl-token-label .wl-name { color: var(--muted); font-size: 11px; margin-left: 6px; }
     .wl-token-label-row { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .wl-mint { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
@@ -985,6 +986,41 @@ function renderWatchlist() {
     return;
   }
   body.innerHTML = _watchlist.map((t) => buildTokenCard(t)).join('');
+  // 首次渲染后立即加载市值
+  if (_watchlist.length > 0 && !_mcTimer) fetchMarketCaps();
+}
+
+// ─── 市值自动刷新（5分钟，串行请求）────────────────────────────────────────
+let _mcTimer = null;
+
+function fmtMC(mc) {
+  if (mc >= 1e9) return '$' + (mc / 1e9).toFixed(2) + 'B';
+  if (mc >= 1e6) return '$' + (mc / 1e6).toFixed(2) + 'M';
+  if (mc >= 1e3) return '$' + (mc / 1e3).toFixed(1) + 'K';
+  if (mc > 0)    return '$' + mc.toFixed(0);
+  return '';
+}
+
+async function fetchMarketCaps() {
+  try {
+    const res = await fetch('/api/market-caps');
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const [mint, info] of Object.entries(data)) {
+      const el = document.getElementById('wl-mc-' + mint);
+      if (!el) continue;
+      const mc = info.marketCap;
+      const change = info.priceChange24h;
+      const color = change > 0 ? '#4caf50' : change < 0 ? '#f44336' : 'var(--muted)';
+      const sign = change > 0 ? '+' : '';
+      el.innerHTML = mc > 0
+        ? `${fmtMC(mc)} <span style="color:${color}">${sign}${change.toFixed(1)}%</span>`
+        : '';
+    }
+  } catch {}
+  // 5分钟后再次刷新
+  if (_mcTimer) clearTimeout(_mcTimer);
+  _mcTimer = setTimeout(fetchMarketCaps, 5 * 60 * 1000);
 }
 
 function buildTokenCard(t) {
@@ -1007,6 +1043,7 @@ function buildTokenCard(t) {
         <div class="wl-token-label-row"><b>${escHtml(t.symbol)}</b><span class="wl-name">${escHtml(t.name)}</span></div>
         <div class="wl-mint" title="${t.mint}" onclick="event.stopPropagation(); copyMint('${t.mint}', this)">${shortMint}</div>
       </div>
+      <span class="wl-mc" id="wl-mc-${t.mint}"></span>
       <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="移除">✕</button>
     </div>
     <div class="wl-card-body" id="wl-body-${t.mint}">
