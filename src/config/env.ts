@@ -18,7 +18,7 @@ export const config = {
   kimiApiKey: process.env['KIMI_API_KEY'] ?? '',
 
   // Dashboard
-  dashboardPort: Number(process.env['DASHBOARD_PORT'] ?? 3000),
+  dashboardPort: Number(process.env['PORT'] ?? process.env['DASHBOARD_PORT'] ?? 3000),
 
   // Monitor loop
   monitorIntervalSec: Number(process.env['MONITOR_INTERVAL_SEC'] ?? 300),

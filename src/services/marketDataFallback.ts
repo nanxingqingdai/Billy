@@ -113,39 +113,20 @@ export async function getValidatedPrice(mint: string): Promise<ValidatedPrice> {
   };
 }
 
-// ─── OHLCV：Birdeye 优先，429 / 失败时切换到 GeckoTerminal ──────────────────
+// ─── OHLCV：GeckoTerminal（Birdeye CU 已耗尽，2026-03 月底前跳过）─────────
 
 export async function getRecentOHLCV(
   mint: string,
   interval: KlineInterval,
   limit: number,
 ): Promise<OHLCVCandle[]> {
-  // ① 优先 Birdeye（6 个 key 轮转，承受力更强）
-  try {
-    const { getRecentOHLCV: birdeyeOHLCV } = await import('./birdeye');
-    const candles = await birdeyeOHLCV(mint, interval, limit);
-    if (candles.length > 0) return candles;
-  } catch (err: any) {
-    log('WARN', `[MarketFallback] Birdeye OHLCV 失败 (${err.message?.slice(0,60)})，切换 GeckoTerminal`);
-  }
-
-  // ② 降级到 GeckoTerminal
   const { getRecentOHLCV: gtOHLCV } = await import('./geckoTerminal');
   return gtOHLCV(mint, interval, limit);
 }
 
-// ─── 入场前置条件检查：Birdeye 优先，失败切换 GeckoTerminal ─────────────────
+// ─── 入场前置条件检查：GeckoTerminal（Birdeye CU 已耗尽，2026-03 月底前跳过）
 
 export async function checkEntryPreConditions(mint: string): Promise<EntryPreConditions> {
-  // ① 优先 Birdeye
-  try {
-    const { checkEntryPreConditions: birdeyeCheck } = await import('./birdeye');
-    return await birdeyeCheck(mint);
-  } catch (err: any) {
-    log('WARN', `[MarketFallback] Birdeye checkEntry 失败 (${err.message?.slice(0,60)})，切换 GeckoTerminal`);
-  }
-
-  // ② 降级到 GeckoTerminal
   const { checkEntryPreConditions: gtCheck } = await import('./geckoTerminal');
   return gtCheck(mint);
 }

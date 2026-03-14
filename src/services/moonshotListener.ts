@@ -16,7 +16,8 @@
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
-import { checkEntryPreConditions, getTokenOverview } from './birdeye';
+import { getTokenOverview } from './geckoTerminal';
+import { checkEntryPreConditions } from './marketDataFallback';
 import { addToken, getWatchlist } from '../config/watchlist';
 import { log } from '../utils/logger';
 import { notifyNewToken } from './telegramNotifier';
