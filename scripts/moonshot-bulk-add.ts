@@ -5,7 +5,6 @@
  */
 
 import axios from 'axios';
-import { getTokenOverview } from '../src/services/geckoTerminal';
 import { addTokenAuto } from '../src/config/watchlist';
 import { log } from '../src/utils/logger';
 
@@ -87,6 +86,24 @@ const DEFAULT_PARAMS = {
   ],
 };
 
+// ─── DexScreener 获取 symbol / name ────────────────────────────────────────
+
+async function getTokenInfo(mint: string): Promise<{ symbol: string; name: string } | null> {
+  try {
+    const res = await axios.get<{ pairs: any[] | null }>(
+      `https://api.dexscreener.com/latest/dex/tokens/${mint}`,
+      { timeout: 10_000 },
+    );
+    const pairs = res.data.pairs ?? [];
+    // 找流动性最高的 pair
+    const best = pairs.sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0];
+    if (!best?.baseToken) return null;
+    return { symbol: best.baseToken.symbol ?? '', name: best.baseToken.name ?? '' };
+  } catch {
+    return null;
+  }
+}
+
 // ─── 主流程 ─────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -106,16 +123,15 @@ async function main() {
     let symbol = mint.slice(0, 6) + '...';
     let name   = 'Unknown';
 
-    try {
-      const overview = await getTokenOverview(mint);
-      symbol = overview.symbol || symbol;
-      name   = overview.name   || name;
-    } catch {
-      log('INFO', `[BulkAdd] ⚠️  ${mint} 无法获取 overview，跳过`);
+    const info = await getTokenInfo(mint);
+    if (!info) {
+      log('INFO', `[BulkAdd] ⚠️  ${mint} DexScreener 无数据，跳过`);
       skippedError++;
       await new Promise(r => setTimeout(r, 500));
       continue;
     }
+    symbol = info.symbol || symbol;
+    name   = info.name   || name;
 
     if (isRwa(symbol, name)) {
       log('INFO', `[BulkAdd] 🚫 ${symbol} — RWA/股票/xStock，跳过`);
