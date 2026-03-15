@@ -45,7 +45,10 @@ function loadProgressCache(): void {
         _signalProgressCache.set(mint, entry);
       }
     }
-    log('INFO', `[SignalProgress] 从文件加载 ${_signalProgressCache.size} 条缓存`);
+    const total = Object.keys(raw).length;
+    const expired = total - _signalProgressCache.size;
+    log('INFO', `[SignalProgress] 从文件加载 ${_signalProgressCache.size} 条缓存，清理 ${expired} 条过期数据`);
+    if (expired > 0) saveProgressCache(); // 回写文件，删除过期条目
   } catch { /* ignore */ }
 }
 loadProgressCache();
