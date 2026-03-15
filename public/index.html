@@ -1003,6 +1003,8 @@ function renderWatchlist() {
   // 排序：开启的排前面，关闭的排底部
   const sorted = [..._watchlist].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
   body.innerHTML = sorted.map((t) => buildTokenCard(t)).join('');
+  // DOM 重建后立即应用已有的缓存数据
+  applyProgressToDOM();
   // 首次渲染后串行加载：市值 → 信号进度（避免并发调用 API）
   if (_watchlist.length > 0 && !_mcTimer) fetchAllData();
 }
@@ -1045,10 +1047,10 @@ async function fetchMarketCaps() {
   } catch {}
 }
 
-// ─── 信号指标进度 ─────────────────────────────────────────────────────────
+// ─── 信号指标进度（前端缓存 + 渲染后立即应用）────────────────────────────
+let _progCache = {}; // 前端缓存，避免 DOM 重建后丢失
 
 function renderProgressBar(current, threshold, isLowerBetter) {
-  // isLowerBetter: true = 数值越低越好（缩量/峰值），false = 数值越高越好（振幅根数）
   let pct, pass, cls;
   if (isLowerBetter) {
     pass = current < threshold;
@@ -1063,38 +1065,43 @@ function renderProgressBar(current, threshold, isLowerBetter) {
   return { pct, cls, pass };
 }
 
+function applyProgressToDOM() {
+  for (const [mint, info] of Object.entries(_progCache)) {
+    const el = document.getElementById('wl-prog-' + mint);
+    if (!el) continue;
+    if (info.error) {
+      el.innerHTML = `<span class="wl-prog-loading">${info.error}</span>`;
+      continue;
+    }
+    const amp = renderProgressBar(info.lowAmpCount, info.minLowAmpBars, false);
+    const vol = renderProgressBar(info.volRatio, info.volRatioThreshold, true);
+    const peak = renderProgressBar(info.peakRatio, info.peakThreshold, true);
+    el.innerHTML = `
+      <div class="wl-prog-item">
+        <span class="wl-prog-label">振幅</span>
+        <div class="wl-prog-bar"><div class="wl-prog-fill ${amp.cls}" style="width:${amp.pct}%"></div></div>
+        <span class="wl-prog-val ${amp.cls}">${info.lowAmpCount}/${info.minLowAmpBars}</span>
+      </div>
+      <div class="wl-prog-item">
+        <span class="wl-prog-label">缩量</span>
+        <div class="wl-prog-bar"><div class="wl-prog-fill ${vol.cls}" style="width:${100 - Math.min(100, info.volRatio)}%"></div></div>
+        <span class="wl-prog-val ${vol.cls}">${info.volRatio}%<${info.volRatioThreshold}%</span>
+      </div>
+      <div class="wl-prog-item">
+        <span class="wl-prog-label">峰值</span>
+        <div class="wl-prog-bar"><div class="wl-prog-fill ${peak.cls}" style="width:${100 - Math.min(100, info.peakRatio)}%"></div></div>
+        <span class="wl-prog-val ${peak.cls}">${info.peakRatio}%<${info.peakThreshold}%</span>
+      </div>`;
+  }
+}
+
 async function fetchSignalProgress() {
   try {
     const res = await fetch('/api/signal-progress');
     if (!res.ok) return;
     const data = await res.json();
-    for (const [mint, info] of Object.entries(data)) {
-      const el = document.getElementById('wl-prog-' + mint);
-      if (!el) continue;
-      if (info.error) {
-        el.innerHTML = `<span class="wl-prog-loading">${info.error}</span>`;
-        continue;
-      }
-      const amp = renderProgressBar(info.lowAmpCount, info.minLowAmpBars, false);
-      const vol = renderProgressBar(info.volRatio, info.volRatioThreshold, true);
-      const peak = renderProgressBar(info.peakRatio, info.peakThreshold, true);
-      el.innerHTML = `
-        <div class="wl-prog-item">
-          <span class="wl-prog-label">振幅</span>
-          <div class="wl-prog-bar"><div class="wl-prog-fill ${amp.cls}" style="width:${amp.pct}%"></div></div>
-          <span class="wl-prog-val ${amp.cls}">${info.lowAmpCount}/${info.minLowAmpBars}</span>
-        </div>
-        <div class="wl-prog-item">
-          <span class="wl-prog-label">缩量</span>
-          <div class="wl-prog-bar"><div class="wl-prog-fill ${vol.cls}" style="width:${100 - Math.min(100, info.volRatio)}%"></div></div>
-          <span class="wl-prog-val ${vol.cls}">${info.volRatio}%<${info.volRatioThreshold}%</span>
-        </div>
-        <div class="wl-prog-item">
-          <span class="wl-prog-label">峰值</span>
-          <div class="wl-prog-bar"><div class="wl-prog-fill ${peak.cls}" style="width:${100 - Math.min(100, info.peakRatio)}%"></div></div>
-          <span class="wl-prog-val ${peak.cls}">${info.peakRatio}%<${info.peakThreshold}%</span>
-        </div>`;
-    }
+    Object.assign(_progCache, data); // 合并到前端缓存
+    applyProgressToDOM();
   } catch {}
 }
 
