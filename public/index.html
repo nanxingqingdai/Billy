@@ -1003,13 +1003,20 @@ function renderWatchlist() {
   // 排序：开启的排前面，关闭的排底部
   const sorted = [..._watchlist].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
   body.innerHTML = sorted.map((t) => buildTokenCard(t)).join('');
-  // 首次渲染后立即加载市值和信号进度
-  if (_watchlist.length > 0 && !_mcTimer) fetchMarketCaps();
-  if (_watchlist.length > 0 && !_progTimer) fetchSignalProgress();
+  // 首次渲染后串行加载：市值 → 信号进度（避免并发调用 API）
+  if (_watchlist.length > 0 && !_mcTimer) fetchAllData();
 }
 
-// ─── 市值自动刷新（5分钟，串行请求）────────────────────────────────────────
+// ─── 数据刷新（市值 → 信号进度，全部串行，5分钟循环）─────────────────────
 let _mcTimer = null;
+
+async function fetchAllData() {
+  await fetchMarketCaps();
+  await fetchSignalProgress();
+  // 5分钟后再次循环
+  if (_mcTimer) clearTimeout(_mcTimer);
+  _mcTimer = setTimeout(fetchAllData, 5 * 60 * 1000);
+}
 
 function fmtMC(mc) {
   if (mc >= 1e9) return '$' + (mc / 1e9).toFixed(2) + 'B';
@@ -1036,13 +1043,9 @@ async function fetchMarketCaps() {
         : '';
     }
   } catch {}
-  // 5分钟后再次刷新
-  if (_mcTimer) clearTimeout(_mcTimer);
-  _mcTimer = setTimeout(fetchMarketCaps, 5 * 60 * 1000);
 }
 
-// ─── 信号指标进度（5分钟自动刷新，串行请求）──────────────────────────────
-let _progTimer = null;
+// ─── 信号指标进度 ─────────────────────────────────────────────────────────
 
 function renderProgressBar(current, threshold, isLowerBetter) {
   // isLowerBetter: true = 数值越低越好（缩量/峰值），false = 数值越高越好（振幅根数）
@@ -1093,8 +1096,6 @@ async function fetchSignalProgress() {
         </div>`;
     }
   } catch {}
-  if (_progTimer) clearTimeout(_progTimer);
-  _progTimer = setTimeout(fetchSignalProgress, 5 * 60 * 1000);
 }
 
 function buildTokenCard(t) {
