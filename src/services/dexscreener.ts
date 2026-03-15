@@ -108,7 +108,7 @@ export async function getDexScreenerSummary(
     priceUsd:               refPair.priceUsd,
     totalVolume24h,
     totalLiquidityUsd,
-    marketCap:              refPair.marketCap,
+    marketCap:              refPair.fdv || refPair.marketCap,  // 使用 FDV（与 GMGN 等工具一致）
     fdv:                    refPair.fdv,
     priceChange24h:         refPair.priceChange.h24,
     earliestPairCreatedMs:  earliestPairCreatedMs === Infinity ? 0 : earliestPairCreatedMs,
