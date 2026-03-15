@@ -1121,7 +1121,7 @@ function buildTokenCard(t) {
       <span class="wl-mc" id="wl-mc-${t.mint}"></span>
       <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="移除">✕</button>
     </div>
-    ${t.active ? `<div class="wl-progress" id="wl-prog-${t.mint}"><span class="wl-prog-loading">加载指标中…</span></div>` : ''}
+    ${t.active ? `<div class="wl-progress" id="wl-prog-${t.mint}"><span class="wl-prog-loading">等待扫描周期…</span></div>` : ''}
     <div class="wl-card-body" id="wl-body-${t.mint}">
       <div class="wl-row">
         <div class="wl-field"><label>最大买入 (USDT)</label>

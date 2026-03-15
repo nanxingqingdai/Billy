@@ -162,56 +162,11 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
     }
   });
 
-  // 信号指标进度（串行调用，避免并发限流）
-  app.get('/api/signal-progress', async (_req, res) => {
+  // 信号指标进度（直接返回 monitor 扫描时缓存的数据，零额外 API 调用）
+  app.get('/api/signal-progress', (_req, res) => {
     try {
-      const { getRecentOHLCV } = await import('./services/marketDataFallback');
-      const tokens = getWatchlist().filter(t => t.active);
-      const result: Record<string, any> = {};
-
-      for (const t of tokens) {
-        try {
-          const candles = await getRecentOHLCV(t.mint, t.signal.interval, 500);
-          if (candles.length < 11) {
-            result[t.mint] = { error: 'K线不足' };
-            continue;
-          }
-
-          const closedCandles = candles.slice(0, -1);
-          const recent10 = closedCandles.slice(-10);
-
-          // 1. 低振幅根数
-          const minLowAmpBars = t.signal.minLowAmpBars ?? 3;
-          const lowAmpCount = recent10.filter(
-            (c: any) => c.o > 0 && ((c.h - c.l) / c.o) * 100 < t.signal.maxAmplitudePct
-          ).length;
-
-          // 2. 缩量比：近10均量 / 全量均量
-          const globalAvgVol = closedCandles.reduce((s: number, c: any) => s + c.v, 0) / closedCandles.length;
-          const recent10AvgVol = recent10.reduce((s: number, c: any) => s + c.v, 0) / recent10.length;
-          const volRatio = globalAvgVol > 0 ? recent10AvgVol / globalAvgVol : 1;
-
-          // 3. 峰值量比：近10均量 / 历史最大量
-          const peakThreshold = t.signal.maxVolPeakRatio ?? 0.1;
-          const maxVol = Math.max(...closedCandles.map((c: any) => c.v));
-          const peakRatio = maxVol > 0 ? recent10AvgVol / maxVol : 0;
-
-          result[t.mint] = {
-            lowAmpCount,
-            minLowAmpBars,
-            ampPass: lowAmpCount >= minLowAmpBars,
-            volRatio: +(volRatio * 100).toFixed(1),
-            volRatioThreshold: +(t.signal.volumeContractionRatio * 100).toFixed(1),
-            volPass: volRatio < t.signal.volumeContractionRatio,
-            peakRatio: +(peakRatio * 100).toFixed(1),
-            peakThreshold: +(peakThreshold * 100).toFixed(1),
-            peakPass: peakRatio < peakThreshold,
-          };
-        } catch {
-          result[t.mint] = { error: '数据获取失败' };
-        }
-      }
-      res.json(result);
+      const { getSignalProgressCache } = require('./monitor') as typeof import('./monitor');
+      res.json(getSignalProgressCache());
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }

@@ -24,6 +24,14 @@ import { recordSignal } from './utils/signalStore';
 const positions = loadPositions();
 const startedAt = Date.now();
 
+// ─── Signal progress cache (for Dashboard, no extra API calls) ───────────────
+const _signalProgressCache = new Map<string, Record<string, any>>();
+export function getSignalProgressCache(): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [mint, data] of _signalProgressCache) result[mint] = data;
+  return result;
+}
+
 // ─── Signal cooldown (prevent repeated TG notifications for the same token) ─
 //   Mature (>40d) : 48 小时冷却
 //   Young  (≤40d) : 4 小时冷却，且每自然日最多通知 2 次
@@ -89,10 +97,30 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     const closedCandles = candles.slice(0, -1);          // 排除最新可能未收盘的K线
     const recent10      = closedCandles.slice(-10);       // 最近10根已收盘
 
-    // ── 低振幅根数检查：最近10根已收盘K线中达标根数 ──────────────────────
+    // ── 计算并缓存信号指标进度（供 Dashboard 展示）──────────────────────
     const minLowAmpBars = signal.minLowAmpBars ?? 1;
+    const lowAmpCount = recent10.filter(c => c.o > 0 && ((c.h - c.l) / c.o) * 100 < signal.maxAmplitudePct).length;
+    const globalAvgVolEarly  = closedCandles.reduce((s, c) => s + c.v, 0) / closedCandles.length;
+    const recent10AvgVolEarly = recent10.reduce((s, c) => s + c.v, 0) / recent10.length;
+    const volRatioEarly      = globalAvgVolEarly > 0 ? recent10AvgVolEarly / globalAvgVolEarly : 1;
+    const peakThresholdEarly = signal.maxVolPeakRatio ?? 0.1;
+    const maxVolEarly        = Math.max(...closedCandles.map(c => c.v));
+    const peakRatioEarly     = maxVolEarly > 0 ? recent10AvgVolEarly / maxVolEarly : 0;
+
+    _signalProgressCache.set(mint, {
+      lowAmpCount,
+      minLowAmpBars,
+      ampPass: lowAmpCount >= minLowAmpBars,
+      volRatio: +(volRatioEarly * 100).toFixed(1),
+      volRatioThreshold: +(signal.volumeContractionRatio * 100).toFixed(1),
+      volPass: volRatioEarly < signal.volumeContractionRatio,
+      peakRatio: +(peakRatioEarly * 100).toFixed(1),
+      peakThreshold: +(peakThresholdEarly * 100).toFixed(1),
+      peakPass: peakRatioEarly < peakThresholdEarly,
+    });
+
+    // ── 低振幅根数检查 ──────────────────────────────────────────────────
     if (minLowAmpBars > 1) {
-      const lowAmpCount = recent10.filter(c => c.o > 0 && ((c.h - c.l) / c.o) * 100 < signal.maxAmplitudePct).length;
       if (lowAmpCount < minLowAmpBars) {
         log('INFO', `[${symbol}] 低振幅根数不足 (${lowAmpCount}/${minLowAmpBars})，跳过`);
         return;
