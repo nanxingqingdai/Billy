@@ -170,6 +170,21 @@
     .wl-toggle input:checked + .wl-slider::before { transform: translateX(16px); background: var(--green); }
 
     /* Token edit body */
+    /* Signal progress indicators */
+    .wl-progress { display: flex; gap: 6px; padding: 6px 12px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--border); background: #080c10; flex-wrap: wrap; }
+    .wl-prog-item { display: flex; align-items: center; gap: 4px; }
+    .wl-prog-label { white-space: nowrap; }
+    .wl-prog-bar { width: 40px; height: 4px; background: #1c2128; border-radius: 2px; overflow: hidden; }
+    .wl-prog-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+    .wl-prog-fill.pass { background: #4caf50; }
+    .wl-prog-fill.fail { background: #f44336; }
+    .wl-prog-fill.near { background: #ff9800; }
+    .wl-prog-val { font-family: monospace; font-size: 10px; }
+    .wl-prog-val.pass { color: #4caf50; }
+    .wl-prog-val.fail { color: #f44336; }
+    .wl-prog-val.near { color: #ff9800; }
+    .wl-prog-loading { color: var(--muted); font-size: 10px; padding: 4px 0; }
+
     .wl-card-body { padding: 12px; background: #0a0e14; border-top: 1px solid var(--border); display: none; flex-direction: column; gap: 10px; }
     .wl-card-body.open { display: flex; }
     .wl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -988,8 +1003,9 @@ function renderWatchlist() {
   // 排序：开启的排前面，关闭的排底部
   const sorted = [..._watchlist].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
   body.innerHTML = sorted.map((t) => buildTokenCard(t)).join('');
-  // 首次渲染后立即加载市值
+  // 首次渲染后立即加载市值和信号进度
   if (_watchlist.length > 0 && !_mcTimer) fetchMarketCaps();
+  if (_watchlist.length > 0 && !_progTimer) fetchSignalProgress();
 }
 
 // ─── 市值自动刷新（5分钟，串行请求）────────────────────────────────────────
@@ -1025,6 +1041,62 @@ async function fetchMarketCaps() {
   _mcTimer = setTimeout(fetchMarketCaps, 5 * 60 * 1000);
 }
 
+// ─── 信号指标进度（5分钟自动刷新，串行请求）──────────────────────────────
+let _progTimer = null;
+
+function renderProgressBar(current, threshold, isLowerBetter) {
+  // isLowerBetter: true = 数值越低越好（缩量/峰值），false = 数值越高越好（振幅根数）
+  let pct, pass, cls;
+  if (isLowerBetter) {
+    pass = current < threshold;
+    pct = Math.min(100, threshold > 0 ? ((threshold - current) / threshold) * 100 : 0);
+    if (pct < 0) pct = 0;
+    cls = pass ? 'pass' : (current < threshold * 1.5 ? 'near' : 'fail');
+  } else {
+    pass = current >= threshold;
+    pct = Math.min(100, threshold > 0 ? (current / threshold) * 100 : 0);
+    cls = pass ? 'pass' : (pct >= 60 ? 'near' : 'fail');
+  }
+  return { pct, cls, pass };
+}
+
+async function fetchSignalProgress() {
+  try {
+    const res = await fetch('/api/signal-progress');
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const [mint, info] of Object.entries(data)) {
+      const el = document.getElementById('wl-prog-' + mint);
+      if (!el) continue;
+      if (info.error) {
+        el.innerHTML = `<span class="wl-prog-loading">${info.error}</span>`;
+        continue;
+      }
+      const amp = renderProgressBar(info.lowAmpCount, info.minLowAmpBars, false);
+      const vol = renderProgressBar(info.volRatio, info.volRatioThreshold, true);
+      const peak = renderProgressBar(info.peakRatio, info.peakThreshold, true);
+      el.innerHTML = `
+        <div class="wl-prog-item">
+          <span class="wl-prog-label">振幅</span>
+          <div class="wl-prog-bar"><div class="wl-prog-fill ${amp.cls}" style="width:${amp.pct}%"></div></div>
+          <span class="wl-prog-val ${amp.cls}">${info.lowAmpCount}/${info.minLowAmpBars}</span>
+        </div>
+        <div class="wl-prog-item">
+          <span class="wl-prog-label">缩量</span>
+          <div class="wl-prog-bar"><div class="wl-prog-fill ${vol.cls}" style="width:${100 - Math.min(100, info.volRatio)}%"></div></div>
+          <span class="wl-prog-val ${vol.cls}">${info.volRatio}%<${info.volRatioThreshold}%</span>
+        </div>
+        <div class="wl-prog-item">
+          <span class="wl-prog-label">峰值</span>
+          <div class="wl-prog-bar"><div class="wl-prog-fill ${peak.cls}" style="width:${100 - Math.min(100, info.peakRatio)}%"></div></div>
+          <span class="wl-prog-val ${peak.cls}">${info.peakRatio}%<${info.peakThreshold}%</span>
+        </div>`;
+    }
+  } catch {}
+  if (_progTimer) clearTimeout(_progTimer);
+  _progTimer = setTimeout(fetchSignalProgress, 5 * 60 * 1000);
+}
+
 function buildTokenCard(t) {
   const shortMint = t.mint.slice(0, 8) + '…' + t.mint.slice(-6);
   const batchRows = t.sellBatches.map((b, i) => `
@@ -1048,6 +1120,7 @@ function buildTokenCard(t) {
       <span class="wl-mc" id="wl-mc-${t.mint}"></span>
       <button class="wl-remove-btn" onclick="event.stopPropagation(); confirmRemove('${t.mint}', '${escHtml(t.symbol)}')" title="移除">✕</button>
     </div>
+    ${t.active ? `<div class="wl-progress" id="wl-prog-${t.mint}"><span class="wl-prog-loading">加载指标中…</span></div>` : ''}
     <div class="wl-card-body" id="wl-body-${t.mint}">
       <div class="wl-row">
         <div class="wl-field"><label>最大买入 (USDT)</label>
