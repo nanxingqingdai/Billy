@@ -985,7 +985,9 @@ function renderWatchlist() {
     body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">暂无代币</div>';
     return;
   }
-  body.innerHTML = _watchlist.map((t) => buildTokenCard(t)).join('');
+  // 排序：开启的排前面，关闭的排底部
+  const sorted = [..._watchlist].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+  body.innerHTML = sorted.map((t) => buildTokenCard(t)).join('');
   // 首次渲染后立即加载市值
   if (_watchlist.length > 0 && !_mcTimer) fetchMarketCaps();
 }
@@ -1181,9 +1183,9 @@ function toggleCardBody(mint) {
 
 function toggleActive(mint, active) {
   socket.emit('watchlist:update', { mint, updates: { active } });
-  // Optimistic UI update for card style
-  const card = document.getElementById('wl-card-' + mint);
-  if (card) card.className = 'wl-card' + (active ? ' active' : '');
+  // 更新本地数据并重新渲染（关闭的自动移到底部）
+  const t = _watchlist.find(t => t.mint === mint);
+  if (t) { t.active = active; renderWatchlist(); }
 }
 
 function saveToken(mint) {
