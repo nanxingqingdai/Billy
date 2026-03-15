@@ -24,11 +24,49 @@ import { recordSignal } from './utils/signalStore';
 const positions = loadPositions();
 const startedAt = Date.now();
 
-// ─── Signal progress cache (for Dashboard, no extra API calls) ───────────────
-const _signalProgressCache = new Map<string, Record<string, any>>();
+// ─── Signal progress cache (持久化到文件，24小时清理一次) ─────────────────
+import * as fs from 'fs';
+import * as path from 'path';
+
+const PROGRESS_FILE = path.join(__dirname, '..', 'data', 'signal-progress.json');
+const PROGRESS_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24小时
+
+interface ProgressEntry { data: Record<string, any>; updatedAt: number; }
+const _signalProgressCache = new Map<string, ProgressEntry>();
+
+// 启动时从文件加载缓存
+function loadProgressCache(): void {
+  try {
+    if (!fs.existsSync(PROGRESS_FILE)) return;
+    const raw = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
+    const now = Date.now();
+    for (const [mint, entry] of Object.entries(raw) as [string, ProgressEntry][]) {
+      if (now - entry.updatedAt < PROGRESS_MAX_AGE_MS) {
+        _signalProgressCache.set(mint, entry);
+      }
+    }
+    log('INFO', `[SignalProgress] 从文件加载 ${_signalProgressCache.size} 条缓存`);
+  } catch { /* ignore */ }
+}
+loadProgressCache();
+
+function saveProgressCache(): void {
+  try {
+    const obj: Record<string, ProgressEntry> = {};
+    const now = Date.now();
+    for (const [mint, entry] of _signalProgressCache) {
+      if (now - entry.updatedAt < PROGRESS_MAX_AGE_MS) obj[mint] = entry;
+    }
+    fs.writeFileSync(PROGRESS_FILE, JSON.stringify(obj, null, 2));
+  } catch { /* ignore */ }
+}
+
 export function getSignalProgressCache(): Record<string, any> {
   const result: Record<string, any> = {};
-  for (const [mint, data] of _signalProgressCache) result[mint] = data;
+  const now = Date.now();
+  for (const [mint, entry] of _signalProgressCache) {
+    if (now - entry.updatedAt < PROGRESS_MAX_AGE_MS) result[mint] = entry.data;
+  }
   return result;
 }
 
@@ -108,16 +146,20 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
     const peakRatioEarly     = maxVolEarly > 0 ? recent10AvgVolEarly / maxVolEarly : 0;
 
     _signalProgressCache.set(mint, {
-      lowAmpCount,
-      minLowAmpBars,
-      ampPass: lowAmpCount >= minLowAmpBars,
-      volRatio: +(volRatioEarly * 100).toFixed(1),
-      volRatioThreshold: +(signal.volumeContractionRatio * 100).toFixed(1),
-      volPass: volRatioEarly < signal.volumeContractionRatio,
-      peakRatio: +(peakRatioEarly * 100).toFixed(1),
-      peakThreshold: +(peakThresholdEarly * 100).toFixed(1),
-      peakPass: peakRatioEarly < peakThresholdEarly,
+      updatedAt: Date.now(),
+      data: {
+        lowAmpCount,
+        minLowAmpBars,
+        ampPass: lowAmpCount >= minLowAmpBars,
+        volRatio: +(volRatioEarly * 100).toFixed(1),
+        volRatioThreshold: +(signal.volumeContractionRatio * 100).toFixed(1),
+        volPass: volRatioEarly < signal.volumeContractionRatio,
+        peakRatio: +(peakRatioEarly * 100).toFixed(1),
+        peakThreshold: +(peakThresholdEarly * 100).toFixed(1),
+        peakPass: peakRatioEarly < peakThresholdEarly,
+      },
     });
+    saveProgressCache();
 
     // ── 低振幅根数检查 ──────────────────────────────────────────────────
     if (minLowAmpBars > 1) {
