@@ -22,11 +22,24 @@ import type {
 
 const BASE_URL      = 'https://api.geckoterminal.com/api/v2';
 const GT_HDR        = { Accept: 'application/json' };
-const MAX_POOLS     = 5;      // 聚合最多 5 个流动性最高的池
+const MAX_POOLS     = 3;      // 聚合最多 3 个流动性最高的池（减少 API 调用）
 const GT_BATCH_SIZE = 1000;   // GeckoTerminal 单次最多返回 1000 根 K 线
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ─── 全局限速器（免费 30 次/分钟，留余量控制在 25 次/分钟 ≈ 2.4秒/次）─────
+const GT_MIN_INTERVAL_MS = 2500; // 每次请求至少间隔 2.5 秒
+let _lastGtRequestTime = 0;
+
+async function gtThrottle(): Promise<void> {
+  const now = Date.now();
+  const elapsed = now - _lastGtRequestTime;
+  if (elapsed < GT_MIN_INTERVAL_MS) {
+    await sleep(GT_MIN_INTERVAL_MS - elapsed);
+  }
+  _lastGtRequestTime = Date.now();
 }
 
 // GeckoTerminal 原始 K 线: [unix_sec, open, high, low, close, volume_target_tokens]
@@ -49,6 +62,7 @@ const poolListCache = new Map<string, PoolInfo[]>();
 async function getTopPools(mint: string): Promise<PoolInfo[]> {
   if (poolListCache.has(mint)) return poolListCache.get(mint)!;
 
+  await gtThrottle();
   const res = await axios.get(
     `${BASE_URL}/networks/solana/tokens/${mint}/pools`,
     { params: { page: 1, sort: 'h24_volume_usd_desc' }, timeout: 10_000, headers: GT_HDR },
@@ -114,6 +128,7 @@ async function fetchPoolOHLCV(
   };
   if (beforeTimestamp !== undefined) params.before_timestamp = beforeTimestamp;
 
+  await gtThrottle();
   const res = await axios.get(
     `${BASE_URL}/networks/solana/pools/${pool.address}/ohlcv/${tf}`,
     { params, timeout: 15_000, headers: GT_HDR },
@@ -173,14 +188,14 @@ export async function getRecentOHLCV(
   const pools        = await getTopPools(mint);
   const { tf, agg }  = toGeckoTimeframe(interval);
 
-  // 并发拉取所有池的 K 线
-  const results = await Promise.allSettled(
-    pools.map(p => fetchPoolOHLCV(p, tf, agg, limit)),
-  );
-
-  const successful = results
-    .filter((r): r is PromiseFulfilledResult<OHLCVCandle[]> => r.status === 'fulfilled')
-    .map(r => r.value);
+  // 串行拉取各池K线（限速，避免 429）
+  const successful: OHLCVCandle[][] = [];
+  for (const p of pools) {
+    try {
+      const candles = await fetchPoolOHLCV(p, tf, agg, limit);
+      successful.push(candles);
+    } catch { /* 单池失败继续下一个 */ }
+  }
 
   if (successful.length === 0) throw new Error('GeckoTerminal: all pool OHLCV requests failed');
 
@@ -253,6 +268,7 @@ async function getFullDailyOHLCV(mint: string): Promise<OHLCVCandle[]> {
 export async function getTokenPrice(mint: string): Promise<TokenPrice> {
   const pools = await getTopPools(mint);
   const pool  = pools[0]!;
+  await gtThrottle();
   const res   = await axios.get(
     `${BASE_URL}/networks/solana/pools/${pool.address}`,
     { timeout: 10_000, headers: GT_HDR },
@@ -273,10 +289,10 @@ export async function getTokenOverview(mint: string): Promise<TokenOverview> {
   const pools = await getTopPools(mint);
   const pool  = pools[0]!;
 
-  const [poolRes, tokenRes] = await Promise.all([
-    axios.get(`${BASE_URL}/networks/solana/pools/${pool.address}`,  { timeout: 10_000, headers: GT_HDR }),
-    axios.get(`${BASE_URL}/networks/solana/tokens/${mint}`, { timeout: 10_000, headers: GT_HDR }),
-  ]);
+  await gtThrottle();
+  const poolRes = await axios.get(`${BASE_URL}/networks/solana/pools/${pool.address}`,  { timeout: 10_000, headers: GT_HDR });
+  await gtThrottle();
+  const tokenRes = await axios.get(`${BASE_URL}/networks/solana/tokens/${mint}`, { timeout: 10_000, headers: GT_HDR });
 
   const pa = poolRes.data.data?.attributes;
   const ta = tokenRes.data.data?.attributes;
