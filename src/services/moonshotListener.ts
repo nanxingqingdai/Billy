@@ -26,7 +26,7 @@ import { notifyNewToken } from './telegramNotifier';
 
 const TG_CHANNELS = [
   'https://t.me/s/moonshotlistings',
-  'https://t.me/s/moonshotnews',
+  // 'https://t.me/s/moonshotnews',  // 暂停：长期无更新
 ];
 
 /** 轮询间隔（毫秒），默认 5 分钟 */
