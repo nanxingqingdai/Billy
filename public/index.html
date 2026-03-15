@@ -1000,8 +1000,14 @@ function renderWatchlist() {
     body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">暂无代币</div>';
     return;
   }
-  // 排序：开启的排前面，关闭的排底部
-  const sorted = [..._watchlist].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+  // 排序：全部达标 → 开启 → 关闭
+  function sortScore(t) {
+    if (!t.active) return 0;
+    const p = _progCache[t.mint];
+    if (p && p.ampPass && p.volPass && p.peakPass) return 2; // 全部达标，置顶
+    return 1; // 开启但未全部达标
+  }
+  const sorted = [..._watchlist].sort((a, b) => sortScore(b) - sortScore(a));
   body.innerHTML = sorted.map((t) => buildTokenCard(t)).join('');
   // DOM 重建后立即应用已有的缓存数据
   applyProgressToDOM();
