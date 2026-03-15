@@ -22,7 +22,7 @@ import type {
 
 const BASE_URL      = 'https://api.geckoterminal.com/api/v2';
 const GT_HDR        = { Accept: 'application/json' };
-const MAX_POOLS     = 3;      // 聚合最多 3 个流动性最高的池（减少 API 调用）
+const MAX_POOLS     = 1;      // 只用流动性最高的池（最小化 API 调用，价格在各池基本一致）
 const GT_BATCH_SIZE = 1000;   // GeckoTerminal 单次最多返回 1000 根 K 线
 
 function sleep(ms: number): Promise<void> {
@@ -62,12 +62,25 @@ const poolListCache = new Map<string, PoolInfo[]>();
 async function getTopPools(mint: string): Promise<PoolInfo[]> {
   if (poolListCache.has(mint)) return poolListCache.get(mint)!;
 
-  await gtThrottle();
-  const res = await axios.get(
-    `${BASE_URL}/networks/solana/tokens/${mint}/pools`,
-    { params: { page: 1, sort: 'h24_volume_usd_desc' }, timeout: 10_000, headers: GT_HDR },
-  );
-  const raw: any[] = res.data.data ?? [];
+  let raw: any[] = [];
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    await gtThrottle();
+    try {
+      const res = await axios.get(
+        `${BASE_URL}/networks/solana/tokens/${mint}/pools`,
+        { params: { page: 1, sort: 'h24_volume_usd_desc' }, timeout: 10_000, headers: GT_HDR },
+      );
+      raw = res.data.data ?? [];
+      break;
+    } catch (err: any) {
+      if (err?.response?.status === 429 && attempt < 2) {
+        log('WARN', `[GT] getTopPools 429，等待 ${(attempt + 1) * 5}s 后重试`);
+        await sleep((attempt + 1) * 5000);
+        continue;
+      }
+      throw err;
+    }
+  }
   if (raw.length === 0) throw new Error(`GeckoTerminal: no pools for ${mint}`);
 
   // 按流动性排序，取前 MAX_POOLS 个
@@ -128,18 +141,30 @@ async function fetchPoolOHLCV(
   };
   if (beforeTimestamp !== undefined) params.before_timestamp = beforeTimestamp;
 
-  await gtThrottle();
-  const res = await axios.get(
-    `${BASE_URL}/networks/solana/pools/${pool.address}/ohlcv/${tf}`,
-    { params, timeout: 15_000, headers: GT_HDR },
-  );
-  const raw: GTCandle[] = res.data.data?.attributes?.ohlcv_list ?? [];
-  // GeckoTerminal 返回 newest-first → 反转为 oldest-first（与 Birdeye 一致）
-  return [...raw].reverse().map(([ts, o, h, l, c, v]) => ({
-    unixTime: ts,
-    o, h, l, c,
-    v: v * c,   // volume_tokens × close_price_usd = volume_usd
-  }));
+  const MAX_RETRIES = 2;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    await gtThrottle();
+    try {
+      const res = await axios.get(
+        `${BASE_URL}/networks/solana/pools/${pool.address}/ohlcv/${tf}`,
+        { params, timeout: 15_000, headers: GT_HDR },
+      );
+      const raw: GTCandle[] = res.data.data?.attributes?.ohlcv_list ?? [];
+      return [...raw].reverse().map(([ts, o, h, l, c, v]) => ({
+        unixTime: ts, o, h, l, c,
+        v: v * c,
+      }));
+    } catch (err: any) {
+      if (err?.response?.status === 429 && attempt < MAX_RETRIES) {
+        const backoff = (attempt + 1) * 5000; // 5s, 10s
+        log('WARN', `[GT] 429 限流，等待 ${backoff / 1000}s 后重试 (${attempt + 1}/${MAX_RETRIES})`);
+        await sleep(backoff);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('fetchPoolOHLCV: max retries exceeded');
 }
 
 /** 单池全量分页（向前翻页直到数据耗尽或到达 timeFloor）*/
