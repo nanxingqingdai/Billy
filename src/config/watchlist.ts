@@ -183,10 +183,11 @@ export function addTokenAuto(token: WatchlistToken): 'added' | 'exists' | 'black
 }
 
 /**
- * Remove a token by mint address (manual — adds to blacklist to prevent auto re-add).
+ * Remove a token by mint address.
+ * @param addToBlacklist — if true, also blacklist to prevent auto re-add (default: false).
  * Returns an errors array; empty array means success.
  */
-export function removeToken(mint: string): string[] {
+export function removeToken(mint: string, addToBlacklist = false): string[] {
   const idx = _list.findIndex((t) => t.mint === mint);
   if (idx === -1) return [`Token not found: ${mint}`];
 
@@ -194,11 +195,13 @@ export function removeToken(mint: string): string[] {
   _list.splice(idx, 1);
   saveToDisk();
 
-  // Blacklist so auto-sync never re-adds this token
-  _blacklist.add(mint);
-  saveBlacklist();
-
-  log('INFO', `[Watchlist] ${symbol} removed and blacklisted`);
+  if (addToBlacklist) {
+    _blacklist.add(mint);
+    saveBlacklist();
+    log('INFO', `[Watchlist] ${symbol} removed and blacklisted`);
+  } else {
+    log('INFO', `[Watchlist] ${symbol} removed (not blacklisted)`);
+  }
   return [];
 }
 

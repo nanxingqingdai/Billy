@@ -246,13 +246,13 @@ export function createAppServer(): { httpServer: ReturnType<typeof createServer>
       }
     });
 
-    socket.on('watchlist:remove', ({ mint }: { mint: string }) => {
-      const errors = removeToken(mint);
+    socket.on('watchlist:remove', ({ mint, blacklist }: { mint: string; blacklist?: boolean }) => {
+      const errors = removeToken(mint, !!blacklist);
       if (errors.length > 0) {
         log('WARN', `[Dashboard] Remove token rejected: ${errors.join(', ')}`);
         socket.emit('bot:watchlist', { tokens: getWatchlist(), errors });
       } else {
-        log('INFO', `[Dashboard] Token removed: ${mint}`);
+        log('INFO', `[Dashboard] Token removed: ${mint}${blacklist ? ' (blacklisted)' : ''}`);
         io.emit('bot:watchlist', { tokens: getWatchlist() });
       }
     });

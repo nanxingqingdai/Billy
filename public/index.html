@@ -1237,7 +1237,8 @@ function deleteBatch(mint, idx) {
 
 function confirmRemove(mint, symbol) {
   if (!confirm(`确认从监控列表移除 ${symbol}？`)) return;
-  socket.emit('watchlist:remove', { mint });
+  const blacklist = confirm(`是否将 ${symbol} 加入黑名单？\n\n加入黑名单后，自动同步不会再添加该代币。\n点击「确定」加入黑名单，「取消」仅移除。`);
+  socket.emit('watchlist:remove', { mint, blacklist });
 }
 
 // Add token form
