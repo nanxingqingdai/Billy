@@ -1084,7 +1084,7 @@ function applyProgressToDOM() {
     const peak = renderProgressBar(info.peakRatio, info.peakThreshold, true);
     el.innerHTML = `
       <div class="wl-prog-item">
-        <span class="wl-prog-label">振幅</span>
+        <span class="wl-prog-label">振幅≤${info.maxAmplitudePct || '?'}%</span>
         <div class="wl-prog-bar"><div class="wl-prog-fill ${amp.cls}" style="width:${amp.pct}%"></div></div>
         <span class="wl-prog-val ${amp.cls}">${info.lowAmpCount}/${info.minLowAmpBars}</span>
       </div>

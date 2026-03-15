@@ -153,6 +153,7 @@ async function scanToken(token: WatchlistToken, solBalance: number, usdtBalance:
       data: {
         lowAmpCount,
         minLowAmpBars,
+        maxAmplitudePct: signal.maxAmplitudePct,
         ampPass: lowAmpCount >= minLowAmpBars,
         volRatio: +(volRatioEarly * 100).toFixed(1),
         volRatioThreshold: +(signal.volumeContractionRatio * 100).toFixed(1),
